@@ -206,6 +206,44 @@ public class RealTimeDataPoint
     public string? Label { get; set; }
 }
 
+// 系统统计信息
+public class SystemStatistics
+{
+    public double CpuUsage { get; set; }
+    public double MemoryUsage { get; set; }
+    public long MemoryUsedBytes { get; set; }
+    public long MemoryTotalBytes { get; set; }
+    public int ActiveFlows { get; set; }
+    public int TotalFlows { get; set; }
+    public long TotalExecutions { get; set; }
+    public double SuccessRate { get; set; }
+    public double AverageLatencyMs { get; set; }
+    public int ActiveConnections { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+// 流程运行状态
+public class FlowRuntimeStatus
+{
+    public string FlowId { get; set; } = string.Empty;
+    public string FlowName { get; set; } = string.Empty;
+    public FlowRunState State { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? LastExecutedAt { get; set; }
+    public long ExecutionCount { get; set; }
+    public long ErrorCount { get; set; }
+    public double AverageDurationMs { get; set; }
+}
+
+// 流程运行状态枚举
+public enum FlowRunState
+{
+    Stopped,
+    Running,
+    Paused,
+    Error
+}
+
 // 大屏预设模板
 public class DashboardTemplate
 {

@@ -32,7 +32,7 @@
     <PackageReference Include="Xabe.FFmpeg" Version="5.2.6" />
     
     <!-- 图像处理 -->
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.0" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.0" />
     
     <!-- 性能监控 -->
@@ -55,10 +55,6 @@
     
     <!-- JSON 序列化 -->
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="appsettings*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
