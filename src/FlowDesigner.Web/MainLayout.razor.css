@@ -1,0 +1,32 @@
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.app-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+    color: white;
+    padding: 0 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    height: 64px;
+}
+
+.app-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.main-content {
+    flex: 1;
+    overflow: hidden;
+}

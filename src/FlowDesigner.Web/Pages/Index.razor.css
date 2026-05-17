@@ -1,0 +1,135 @@
+.flow-list-container {
+    height: 100%;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.flow-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.flow-list-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+.flows-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.flow-card {
+    background: #16213e;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+
+.flow-card:hover {
+    border-color: #6366f1;
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.flow-card-header {
+    background: linear-gradient(135deg, #3730a3 0%, #5b21b6 100%);
+    padding: 2rem;
+    text-align: center;
+}
+
+.flow-card-header i {
+    font-size: 3rem;
+    color: white;
+}
+
+.flow-card-content {
+    padding: 1.5rem;
+}
+
+.flow-card-content h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.flow-card-content p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.flow-card-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.flow-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.flow-card-footer {
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid #2d3748;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #475569;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #94a3b8;
+}
+
+.empty-state p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 4rem;
+    color: #94a3b8;
+}

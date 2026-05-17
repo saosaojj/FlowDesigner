@@ -1,0 +1,141 @@
+@using FlowDesigner.Shared.Models
+
+<g class="flow-node-card"
+   transform="translate(@Node.X @Node.Y)"
+   @onmousedown="(e) => HandleMouseDown(e)"
+   @onclick="(e) => HandleClick(e)">
+    <rect class="node-bg"
+          x="0" y="0" 
+          width="150" height="@(GetNodeHeight())" 
+          rx="10" ry="10"
+          fill="@NodeDefinition?.Color ?? "#6366f1""
+          stroke="@(IsSelected ? "#ffffff" : "transparent")"
+          stroke-width="@(IsSelected ? "3" : "0")" />
+    
+    <g class="node-header">
+        <rect x="0" y="0" width="150" height="35" rx="10" ry="10" fill="rgba(0,0,0,0.2)" />
+        <text x="75" y="23" text-anchor="middle" 
+               fill="white" font-size="13" font-weight="600"
+               font-family="Segoe UI, sans-serif">
+            @(string.IsNullOrEmpty(Node.Label) ? (NodeDefinition?.Name ?? "Node") : Node.Label)
+        </text>
+    </g>
+
+    <g class="node-inputs">
+        @for (int i = 0; i < Node.Inputs.Count; i++)
+        {
+            var port = Node.Inputs[i];
+            var y = 35 + (i * 20);
+            <g class="input-port" 
+               @onmousedown:stopPropagation="true"
+               @onclick:stopPropagation="true"
+               @onclick="() => OnStartConnection?.Invoke(port)">
+                <circle cx="10" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
+                <text x="22" y="@(y + 4)" fill="#e2e8f0" font-size="10">@port.Name</text>
+            </g>
+        }
+    </g>
+
+    <g class="node-outputs">
+        @for (int i = 0; i < Node.Outputs.Count; i++)
+        {
+            var port = Node.Outputs[i];
+            var y = 35 + (i * 20);
+            <g class="output-port"
+               @onmousedown:stopPropagation="true"
+               @onclick:stopPropagation="true"
+               @onclick="() => OnStartConnection?.Invoke(port)">
+                <circle cx="140" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
+                <text x="130" y="@(y + 4)" text-anchor="end" fill="#e2e8f0" font-size="10">@port.Name</text>
+            </g>
+        }
+    </g>
+
+    @if (NodeDefinition?.Properties.Count > 0)
+    {
+        <g class="node-footer">
+            <rect x="0" y="@(GetNodeHeight() - 20)" width="150" height="20" rx="0" ry="0" fill="rgba(0,0,0,0.15)" />
+            <text x="10" y="@(GetNodeHeight() - 6)" fill="rgba(255,255,255,0.7)" font-size="9">
+                @Node.Type
+            </text>
+        </g>
+    }
+</g>
+
+@code {
+    [Parameter]
+    public FlowNode Node { get; set; } = null!;
+
+    [Parameter]
+    public NodeDefinition? NodeDefinition { get; set; }
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnSelect { get; set; }
+
+    [Parameter]
+    public EventCallback<NodePort> OnStartConnection { get; set; }
+
+    [Parameter]
+    public EventCallback<(double X, double Y)> OnPositionChanged { get; set; }
+
+    [Parameter]
+    public double Zoom { get; set; } = 1.0;
+
+    [Parameter]
+    public double PanX { get; set; } = 0;
+
+    [Parameter]
+    public double PanY { get; set; } = 0;
+
+    private bool isDragging = false;
+    private double dragStartX = 0, dragStartY = 0;
+    private double nodeStartX = 0, nodeStartY = 0;
+
+    private double GetNodeHeight()
+    {
+        var portCount = Math.Max(Node.Inputs.Count, Node.Outputs.Count);
+        return 35 + (portCount * 20) + (NodeDefinition?.Properties.Count > 0 ? 20 : 0);
+    }
+
+    private void HandleClick(MouseEventArgs e)
+    {
+        if (!isDragging)
+        {
+            OnSelect.InvokeAsync(e);
+        }
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (e.Button == 0)
+        {
+            isDragging = true;
+            dragStartX = e.ClientX;
+            dragStartY = e.ClientY;
+            nodeStartX = Node.X;
+            nodeStartY = Node.Y;
+            
+            OnSelect.InvokeAsync(e);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isDragging)
+        {
+            var currentX = 0.0;
+            var currentY = 0.0;
+            
+            var deltaX = (dragStartX - (double)(dragStartX)) / Zoom;
+            var deltaY = (dragStartY - (double)(dragStartY)) / Zoom;
+            
+            var newX = nodeStartX - (dragStartX - (double)(dragStartX)) / Zoom;
+            var newY = nodeStartY - (dragStartY - (double)(dragStartY)) / Zoom;
+            
+            await OnPositionChanged.InvokeAsync((newX, newY));
+        }
+    }
+}

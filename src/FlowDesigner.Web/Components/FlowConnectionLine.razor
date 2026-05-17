@@ -1,0 +1,84 @@
+@using FlowDesigner.Shared.Models
+
+@if (sourceNode != null && targetNode != null)
+{
+    var path = GetConnectionPath();
+    <g class="flow-connection" 
+       @onclick="HandleClick"
+       style="cursor: pointer;">
+        <path d="@path" 
+              stroke="@(IsSelected ? "#818cf8" : "#6366f1")" 
+              stroke-width="@(IsSelected ? "3" : "2")" 
+              fill="none"
+              opacity="@(IsSelected ? "1" : "0.7")" />
+        <path d="@path" 
+              stroke="transparent" 
+              stroke-width="20" 
+              fill="none"
+              style="cursor: pointer;" />
+        @if (IsSelected)
+        {
+            <circle cx="@EndX" cy="@EndY" r="6" fill="#818cf8" stroke="white" stroke-width="2" />
+        }
+    </g>
+}
+
+@code {
+    [Parameter]
+    public FlowConnection Connection { get; set; } = null!;
+
+    [Parameter]
+    public List<FlowNode> Nodes { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private FlowNode? sourceNode;
+    private FlowNode? targetNode;
+
+    private double StartX => sourceNode?.X + 150 ?? 0;
+    private double StartY => sourceNode != null ? 35 + (GetOutputIndex() * 20) : 0;
+    private double EndX => targetNode?.X ?? 0;
+    private double EndY => targetNode != null ? 35 + (GetInputIndex() * 20) : 0;
+
+    private int GetOutputIndex()
+    {
+        if (sourceNode == null) return 0;
+        var port = sourceNode.Outputs.FirstOrDefault(p => p.Id == Connection.SourcePortId);
+        return sourceNode.Outputs.IndexOf(port ?? sourceNode.Outputs.FirstOrDefault()!);
+    }
+
+    private int GetInputIndex()
+    {
+        if (targetNode == null) return 0;
+        var port = targetNode.Inputs.FirstOrDefault(p => p.Id == Connection.TargetPortId);
+        return targetNode.Inputs.IndexOf(port ?? targetNode.Inputs.FirstOrDefault()!);
+    }
+
+    private string GetConnectionPath()
+    {
+        var dx = EndX - StartX;
+        var dy = EndY - StartY;
+        
+        var cpOffset = Math.Max(Math.Abs(dx) / 2, 50);
+        cpOffset = Math.Min(cpOffset, 150);
+        
+        var midX = StartX + dx / 2;
+        
+        return $"M {StartX} {StartY} C {midX} {StartY}, {midX} {EndY}, {EndX} {EndY}";
+    }
+
+    private void HandleClick(MouseEventArgs e)
+    {
+        OnClick.InvokeAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        sourceNode = Nodes.FirstOrDefault(n => n.Id == Connection.SourceNodeId);
+        targetNode = Nodes.FirstOrDefault(n => n.Id == Connection.TargetNodeId);
+    }
+}

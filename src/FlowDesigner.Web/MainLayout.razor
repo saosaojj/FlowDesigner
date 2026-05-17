@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+
+<div class="app-container">
+    <header class="app-header">
+        <div class="header-content">
+            <h1 class="app-title">
+                <i class="fas fa-project-diagram"></i>
+                Flow Designer
+            </h1>
+            <nav class="app-nav">
+                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                    <i class="fas fa-home"></i>
+                    Flows
+                </NavLink>
+                <NavLink class="nav-link" href="/dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    Dashboard
+                </NavLink>
+            </nav>
+        </div>
+    </header>
+    <main class="main-content">
+        @Body
+    </main>
+</div>
