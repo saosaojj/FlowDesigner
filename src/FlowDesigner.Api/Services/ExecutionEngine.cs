@@ -1,4 +1,5 @@
 using FlowDesigner.Shared.Models;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace FlowDesigner.Api.Services;
@@ -56,10 +57,10 @@ public class ExecutionEngine
 public class FlowRuntime
 {
     private readonly Flow _flow;
-    private readonly ILogger _logger;
+    private readonly ILogger<FlowRuntime> _logger;
     private bool _isRunning;
 
-    public FlowRuntime(Flow flow, ILogger logger)
+    public FlowRuntime(Flow flow, ILogger<FlowRuntime> logger)
     {
         _flow = flow;
         _logger = logger;

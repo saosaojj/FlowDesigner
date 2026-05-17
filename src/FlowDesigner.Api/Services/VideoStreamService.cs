@@ -134,7 +134,7 @@ public class StreamProcessor : IDisposable
 {
     private readonly string _streamId;
     private readonly VideoStreamConfig _config;
-    private readonly ILogger _logger;
+    private readonly ILogger<StreamProcessor> _logger;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly ConcurrentQueue<VideoFrame> _frameBuffer;
     private readonly object _lockObject = new();
@@ -148,7 +148,7 @@ public class StreamProcessor : IDisposable
 
     public VideoFrame? LatestFrame => Volatile.Read(ref _latestFrame);
 
-    public StreamProcessor(string streamId, VideoStreamConfig config, ILogger logger)
+    public StreamProcessor(string streamId, VideoStreamConfig config, ILogger<StreamProcessor> logger)
     {
         _streamId = streamId;
         _config = config;

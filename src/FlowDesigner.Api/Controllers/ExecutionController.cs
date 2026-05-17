@@ -55,7 +55,7 @@ public class ExecutionController : ControllerBase
     }
     
     [HttpGet("flow/{flowId}/status")]
-    public ActionResult<Services.FlowRuntimeStatus> GetFlowStatus(string flowId)
+    public ActionResult<Services.ExecutionFlowStatus> GetFlowStatus(string flowId)
     {
         var status = _engine.GetFlowStatus(flowId);
         return Ok(status);
@@ -101,7 +101,7 @@ public class ExecutionController : ControllerBase
     }
     
     [HttpGet("metrics/system")]
-    public ActionResult<Services.SystemStatistics> GetSystemMetrics()
+    public ActionResult<Services.ExecutionSystemStats> GetSystemMetrics()
     {
         var stats = _monitor.GetSystemStatistics();
         return Ok(stats);

@@ -96,11 +96,11 @@ public class PerformanceMonitor
         return new Dictionary<string, NodeMetrics>(_nodeMetrics);
     }
     
-    public SystemStatistics GetSystemStatistics()
+    public ExecutionSystemStats GetSystemStatistics()
     {
         var process = Process.GetCurrentProcess();
         
-        return new SystemStatistics
+        return new ExecutionSystemStats
         {
             TotalMessagesProcessed = Interlocked.Read(ref _totalMessagesProcessed),
             TotalExecutionTime = Interlocked.Read(ref _totalExecutionTime),
@@ -202,7 +202,7 @@ public class SystemMetric
     public DateTime Timestamp { get; set; }
 }
 
-public class SystemStatistics
+public class ExecutionSystemStats
 {
     public long TotalMessagesProcessed { get; set; }
     public long TotalExecutionTime { get; set; }

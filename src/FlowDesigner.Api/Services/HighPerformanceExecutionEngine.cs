@@ -82,7 +82,7 @@ public class HighPerformanceExecutionEngine : IDisposable
         }
         
         _logger.LogInformation("高性能执行引擎已初始化: 并发数={MaxConcurrency}, 队列大小={MaxQueueSize}", 
-            maxConcurrency, maxQueueSize);
+            _maxConcurrency, _maxQueueSize);
     }
 
     public async Task<ExecutionResult> ExecuteFlowAsync(
@@ -223,11 +223,11 @@ public class HighPerformanceExecutionEngine : IDisposable
         _logger.LogInformation("流程已停止: {FlowId}", flowId);
     }
 
-    public FlowRuntimeStatus GetFlowStatus(string flowId)
+    public ExecutionFlowStatus GetFlowStatus(string flowId)
     {
         if (_runtimeContexts.TryGetValue(flowId, out var context))
         {
-            return new FlowRuntimeStatus
+            return new ExecutionFlowStatus
             {
                 FlowId = flowId,
                 IsRunning = context.IsRunning,
@@ -238,7 +238,7 @@ public class HighPerformanceExecutionEngine : IDisposable
             };
         }
         
-        return new FlowRuntimeStatus
+        return new ExecutionFlowStatus
         {
             FlowId = flowId,
             IsRunning = false
@@ -570,7 +570,7 @@ public class FlowRuntimeContext : IDisposable
     }
 }
 
-public class FlowRuntimeStatus
+public class ExecutionFlowStatus
 {
     public string FlowId { get; set; } = string.Empty;
     public bool IsRunning { get; set; }
