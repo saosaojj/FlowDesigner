@@ -29,7 +29,7 @@
             <g class="input-port" 
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
-               @onclick="() => OnStartConnection?.Invoke(port)">
+               @onclick="() => OnStartConnection.InvokeAsync(port)">
                 <circle cx="10" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
                 <text x="22" y="@(y + 4)" fill="#e2e8f0" font-size="10">@port.Name</text>
             </g>
@@ -44,7 +44,7 @@
             <g class="output-port"
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
-               @onclick="() => OnStartConnection?.Invoke(port)">
+               @onclick="() => OnStartConnection.InvokeAsync(port)">
                 <circle cx="140" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
                 <text x="130" y="@(y + 4)" text-anchor="end" fill="#e2e8f0" font-size="10">@port.Name</text>
             </g>

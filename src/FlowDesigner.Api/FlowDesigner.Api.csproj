@@ -55,6 +55,9 @@
     
     <!-- JSON 序列化 -->
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    
+    <!-- YAML 处理 -->
+    <PackageReference Include="YamlDotNet" Version="15.1.0" />
   </ItemGroup>
 
 </Project>

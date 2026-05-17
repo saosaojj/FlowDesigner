@@ -211,12 +211,12 @@
             <div class="panel-header">
                 <div class="panel-tabs">
                     <button class="panel-tab @(activeTab == "properties" ? "active" : "")" 
-                            @onclick="() => activeTab = "properties"">
+                            @onclick='() => activeTab = "properties"'>
                         <i class="fas fa-sliders-h"></i>
                         属性
                     </button>
                     <button class="panel-tab @(activeTab == "debug" ? "active" : "")" 
-                            @onclick="() => activeTab = "debug"">
+                            @onclick='() => activeTab = "debug"'>
                         <i class="fas fa-terminal"></i>
                         调试
                         @if (debugMessages.Count > 0)
@@ -389,7 +389,7 @@
                     <button class="modal-btn secondary" @onclick="CloseImportDialog">
                         取消
                     </button>
-                    <button class="modal-btn primary" @onclick="@(isExporting ? CloseImportDialog : ImportFlow)">
+                    <button class="modal-btn primary" @onclick="HandleImportExport">
                         <i class="fas @(isExporting ? "fa-check" : "fa-file-import")"></i>
                         @(isExporting ? "完成" : "导入")
                     </button>
@@ -423,6 +423,7 @@
     private TempConnectionInfo? tempConnection;
     private string? connectingNodeId;
     private string? connectingPortId;
+    private string? _dragNodeType;
     
     private bool showContextMenu = false;
     private double contextMenuX = 0, contextMenuY = 0;
@@ -531,7 +532,7 @@
 
     private void StartDragNode(DragEventArgs e, NodeDefinition nodeDef)
     {
-        e.DataTransfer.SetData("nodeType", nodeDef.Type);
+        _dragNodeType = nodeDef.Type;
         e.DataTransfer.EffectAllowed = "copy";
     }
 
@@ -546,7 +547,7 @@
 
     private async Task HandleDrop(DragEventArgs e)
     {
-        var nodeType = e.DataTransfer.GetData("nodeType");
+        var nodeType = _dragNodeType;
         if (string.IsNullOrEmpty(nodeType))
             return;
 
@@ -850,7 +851,6 @@
 
     private void ShowContextMenu(MouseEventArgs e)
     {
-        e.preventDefault();
         showContextMenu = true;
         contextMenuX = e.ClientX;
         contextMenuY = e.ClientY;
@@ -975,6 +975,14 @@
     private void CloseImportDialog()
     {
         showImportDialog = false;
+    }
+
+    private void HandleImportExport()
+    {
+        if (isExporting)
+            CloseImportDialog();
+        else
+            ImportFlow();
     }
 
     private async Task ImportFlow()
