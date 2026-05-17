@@ -23,7 +23,7 @@ public class YoloDetectionService
     // 模拟YOLO检测（生产环境会调用真实的YOLO模型）
     public async Task<VisionDetectionResult> DetectAsync(
         byte[] imageBytes,
-        YoloDetectionParams? params = null,
+        YoloDetectionParams? detectionParams = null,
         string modelKey = "default")
     {
         var stopwatch = Stopwatch.StartNew();
@@ -36,7 +36,7 @@ public class YoloDetectionService
                 config = YoloModelConfig.Default;
             }
             
-            var yoloParams = params ?? new YoloDetectionParams();
+            var yoloParams = detectionParams ?? new YoloDetectionParams();
             
             // 模拟检测（实际项目中这里会调用真实的YOLO推理）
             result.Objects = await SimulateDetectionAsync(config, yoloParams);

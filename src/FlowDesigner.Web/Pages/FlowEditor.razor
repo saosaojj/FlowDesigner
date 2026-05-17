@@ -478,7 +478,7 @@
                 Id = Id,
                 Name = "新流程",
                 Nodes = new List<FlowNode>(),
-                Connections = new List<FlowConnection>()
+                Connections = new List<Shared.Models.FlowConnection>()
             };
         }
     }
@@ -695,7 +695,7 @@
         StateHasChanged();
     }
 
-    private void SelectConnection(FlowConnection connection)
+    private void SelectConnection(Shared.Models.FlowConnection connection)
     {
         selectedConnectionId = connection.Id;
         selectedNodeIds.Clear();
@@ -926,7 +926,7 @@
                 Inputs = n.Inputs.Select(p => new NodePort { Id = p.Id, Name = p.Name, Type = p.Type }).ToList(),
                 Outputs = n.Outputs.Select(p => new NodePort { Id = p.Id, Name = p.Name, Type = p.Type }).ToList()
             }).ToList(),
-            Connections = flow.Connections.Select(c => new FlowConnection
+            Connections = flow.Connections.Select(c => new Shared.Models.FlowConnection
             {
                 Id = c.Id,
                 SourceNodeId = c.SourceNodeId,
