@@ -1,4 +1,5 @@
 using FlowDesigner.Api.Services;
+using FlowDesigner.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlowDesigner.Api.Controllers;
@@ -54,7 +55,7 @@ public class ExecutionController : ControllerBase
     }
     
     [HttpGet("flow/{flowId}/status")]
-    public ActionResult<FlowRuntimeStatus> GetFlowStatus(string flowId)
+    public ActionResult<Services.FlowRuntimeStatus> GetFlowStatus(string flowId)
     {
         var status = _engine.GetFlowStatus(flowId);
         return Ok(status);
@@ -100,7 +101,7 @@ public class ExecutionController : ControllerBase
     }
     
     [HttpGet("metrics/system")]
-    public ActionResult<SystemStatistics> GetSystemMetrics()
+    public ActionResult<Services.SystemStatistics> GetSystemMetrics()
     {
         var stats = _monitor.GetSystemStatistics();
         return Ok(stats);

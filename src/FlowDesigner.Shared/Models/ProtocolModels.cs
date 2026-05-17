@@ -90,4 +90,6 @@ public class RtpSessionInfo
     public long BytesReceived { get; set; }
     public ushort LastSequenceNumber { get; set; }
     public int LastTimestamp { get; set; }
+    public int PayloadType { get; set; }
+    public int ClockRate { get; set; } = 8000;
 }

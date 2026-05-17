@@ -35,6 +35,19 @@ public class BackpressureState
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }
 
+public class BackpressureStatistics
+{
+    public int TotalConnections { get; set; }
+    public int NormalCount { get; set; }
+    public int HighCount { get; set; }
+    public int CriticalCount { get; set; }
+    public int BlockedCount { get; set; }
+    public int DroppingCount { get; set; }
+    public double AverageUtilization { get; set; }
+    public double MaxUtilization { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
 public class BackpressureController
 {
     private readonly ConcurrentDictionary<string, BackpressureState> _connectionStates = new();
@@ -176,6 +189,33 @@ public class BackpressureController
             state.Status = status;
             state.LastUpdated = DateTime.UtcNow;
         }
+    }
+
+    public BackpressureStatistics GetStatistics()
+    {
+        var states = _connectionStates.Values.ToList();
+        return new BackpressureStatistics
+        {
+            TotalConnections = states.Count,
+            NormalCount = states.Count(s => s.Status == BackpressureStatus.Normal),
+            HighCount = states.Count(s => s.Status == BackpressureStatus.High),
+            CriticalCount = states.Count(s => s.Status == BackpressureStatus.Critical),
+            BlockedCount = states.Count(s => s.Status == BackpressureStatus.Blocked),
+            DroppingCount = states.Count(s => s.Status == BackpressureStatus.Dropping),
+            AverageUtilization = states.Count > 0 ? states.Average(s => s.UtilizationPercent) : 0,
+            MaxUtilization = states.Count > 0 ? states.Max(s => s.UtilizationPercent) : 0,
+            Timestamp = DateTime.UtcNow
+        };
+    }
+
+    public void Reset()
+    {
+        foreach (var kvp in _queues)
+        {
+            kvp.Value.Writer.Complete();
+        }
+        _queues.Clear();
+        _connectionStates.Clear();
     }
 
     private void CleanupInactiveQueues(object? state)

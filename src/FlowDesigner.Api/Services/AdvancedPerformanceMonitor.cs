@@ -14,7 +14,7 @@ public class AdvancedPerformanceMonitor
 {
     private readonly ILogger<AdvancedPerformanceMonitor> _logger;
     private readonly IMemoryCache _cache;
-    private readonly ConcurrentDictionary<string, PerformanceMetrics> _metrics;
+    private readonly ConcurrentDictionary<string, FlowPerformanceTracker> _metrics;
     private readonly ConcurrentDictionary<string, TimingStats> _timingStats;
     private readonly ConcurrentDictionary<string, SystemMetrics> _historicalMetrics;
     private readonly Timer _monitorTimer;
@@ -26,7 +26,7 @@ public class AdvancedPerformanceMonitor
     {
         _logger = logger;
         _cache = cache;
-        _metrics = new ConcurrentDictionary<string, PerformanceMetrics>();
+        _metrics = new ConcurrentDictionary<string, FlowPerformanceTracker>();
         _timingStats = new ConcurrentDictionary<string, TimingStats>();
         _historicalMetrics = new ConcurrentDictionary<string, SystemMetrics>();
 
@@ -51,7 +51,7 @@ public class AdvancedPerformanceMonitor
 
     public void UpdateFlowMetrics(string flowId, FlowPerformanceData data)
     {
-        var metrics = _metrics.GetOrAdd(flowId, _ => new PerformanceMetrics());
+        var metrics = _metrics.GetOrAdd(flowId, _ => new FlowPerformanceTracker());
         metrics.Update(data);
     }
 
@@ -303,7 +303,7 @@ public class TimingStats
     }
 }
 
-public class PerformanceMetrics
+public class FlowPerformanceTracker
 {
     public long TotalExecutions { get; private set; }
     public long SuccessCount { get; private set; }
