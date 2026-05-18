@@ -73,6 +73,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+app.UseRouting();
 app.UseStaticFiles();
 app.UseAuthorization();
 
