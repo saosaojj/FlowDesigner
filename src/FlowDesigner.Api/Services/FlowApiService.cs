@@ -1,102 +1,96 @@
 using FlowDesigner.Shared.Models;
-using System.Net.Http.Json;
 
 namespace FlowDesigner.Api.Services;
 
 public class FlowApiService
 {
-    private readonly HttpClient _httpClient;
+    private readonly FlowService _flowService;
+    private readonly NodeRegistryService _nodeRegistryService;
+    private readonly DashboardService _dashboardService;
 
-    public FlowApiService(HttpClient httpClient)
+    public FlowApiService(
+        FlowService flowService,
+        NodeRegistryService nodeRegistryService,
+        DashboardService dashboardService)
     {
-        _httpClient = httpClient;
+        _flowService = flowService;
+        _nodeRegistryService = nodeRegistryService;
+        _dashboardService = dashboardService;
     }
 
     public async Task<List<Flow>?> GetAllFlowsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<Flow>>("api/flows");
+        return await _flowService.GetAllFlowsAsync();
     }
 
     public async Task<Flow?> GetFlowAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<Flow>($"api/flows/{id}");
+        return await _flowService.GetFlowAsync(id);
     }
 
     public async Task<Flow?> CreateFlowAsync(Flow flow)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/flows", flow);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Flow>();
+        return await _flowService.CreateFlowAsync(flow);
     }
 
     public async Task<Flow?> UpdateFlowAsync(string id, Flow flow)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/flows/{id}", flow);
-        if (!response.IsSuccessStatusCode)
-            return null;
-        return await response.Content.ReadFromJsonAsync<Flow>();
+        return await _flowService.UpdateFlowAsync(id, flow);
     }
 
     public async Task<bool> DeleteFlowAsync(string id)
     {
-        var response = await _httpClient.DeleteAsync($"api/flows/{id}");
-        return response.IsSuccessStatusCode;
+        return await _flowService.DeleteFlowAsync(id);
     }
 
     public async Task<List<NodeDefinition>?> GetNodeDefinitionsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<NodeDefinition>>("api/nodes/definitions");
+        return await _nodeRegistryService.GetAllNodeDefinitionsAsync();
     }
 
-    // Dashboard APIs
     public async Task<List<DashboardConfig>?> GetAllDashboardsAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<DashboardConfig>>("api/dashboards");
+        return await _dashboardService.GetAllDashboardsAsync();
     }
 
     public async Task<DashboardConfig?> GetDashboardAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<DashboardConfig>($"api/dashboards/{id}");
+        return await _dashboardService.GetDashboardAsync(id);
     }
 
     public async Task<DashboardDataSnapshot?> GetDashboardDataAsync(string id)
     {
-        return await _httpClient.GetFromJsonAsync<DashboardDataSnapshot>($"api/dashboards/{id}/data");
+        var result = await _dashboardService.GetDashboardDataAsync(id);
+        return result;
     }
 
     public async Task<DashboardConfig?> CreateDashboardAsync(DashboardConfig config)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/dashboards", config);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<DashboardConfig>();
+        return await _dashboardService.CreateDashboardAsync(config);
     }
 
     public async Task<DashboardConfig?> UpdateDashboardAsync(string id, DashboardConfig config)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/dashboards/{id}", config);
-        if (!response.IsSuccessStatusCode)
-            return null;
-        return await response.Content.ReadFromJsonAsync<DashboardConfig>();
+        return await _dashboardService.UpdateDashboardAsync(id, config);
     }
 
     public async Task<bool> DeleteDashboardAsync(string id)
     {
-        var response = await _httpClient.DeleteAsync($"api/dashboards/{id}");
-        return response.IsSuccessStatusCode;
+        return await _dashboardService.DeleteDashboardAsync(id);
     }
 
     public async Task<List<DashboardTemplate>?> GetDashboardTemplatesAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<DashboardTemplate>>("api/dashboards/templates/list");
+        return await _dashboardService.GetTemplatesAsync();
     }
 
     public async Task<List<AlarmRecord>?> GetRecentAlarmsAsync(int count = 20)
     {
-        return await _httpClient.GetFromJsonAsync<List<AlarmRecord>>($"api/dashboards/alarms/recent?count={count}");
+        return await _dashboardService.GetRecentAlarmsAsync(count);
     }
 
     public async Task<List<DeviceStatus>?> GetAllDevicesAsync()
     {
-        return await _httpClient.GetFromJsonAsync<List<DeviceStatus>>("api/dashboards/devices/list");
+        return await _dashboardService.GetAllDevicesAsync();
     }
 }

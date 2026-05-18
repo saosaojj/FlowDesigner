@@ -2,8 +2,8 @@
 
 <g class="flow-node-card"
    transform="translate(@Node.X @Node.Y)"
-   @onmousedown="(e) => HandleMouseDown(e)"
-   @onclick="(e) => HandleClick(e)">
+   @onmousedown:stopPropagation="true"
+   @onmousedown="(e) => HandleMouseDown(e)">
     <rect class="node-bg"
           x="0" y="0" 
           width="150" height="@(GetNodeHeight())" 
@@ -73,26 +73,16 @@
     public bool IsSelected { get; set; }
 
     [Parameter]
-    public EventCallback<MouseEventArgs> OnSelect { get; set; }
+    public EventCallback<(FlowNode Node, MouseEventArgs Args)> OnNodeMouseDown { get; set; }
 
     [Parameter]
     public EventCallback<NodePort> OnStartConnection { get; set; }
 
     [Parameter]
-    public EventCallback<(double X, double Y)> OnPositionChanged { get; set; }
-
-    [Parameter]
     public double Zoom { get; set; } = 1.0;
 
     [Parameter]
-    public double PanX { get; set; } = 0;
-
-    [Parameter]
-    public double PanY { get; set; } = 0;
-
-    private bool isDragging = false;
-    private double dragStartX = 0, dragStartY = 0;
-    private double nodeStartX = 0, nodeStartY = 0;
+    public EventCallback OnDelete { get; set; }
 
     private double GetNodeHeight()
     {
@@ -100,42 +90,11 @@
         return 35 + (portCount * 20) + (NodeDefinition?.Properties.Count > 0 ? 20 : 0);
     }
 
-    private void HandleClick(MouseEventArgs e)
-    {
-        if (!isDragging)
-        {
-            OnSelect.InvokeAsync(e);
-        }
-    }
-
     private void HandleMouseDown(MouseEventArgs e)
     {
         if (e.Button == 0)
         {
-            isDragging = true;
-            dragStartX = e.ClientX;
-            dragStartY = e.ClientY;
-            nodeStartX = Node.X;
-            nodeStartY = Node.Y;
-            
-            OnSelect.InvokeAsync(e);
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (isDragging)
-        {
-            var currentX = 0.0;
-            var currentY = 0.0;
-            
-            var deltaX = (dragStartX - (double)(dragStartX)) / Zoom;
-            var deltaY = (dragStartY - (double)(dragStartY)) / Zoom;
-            
-            var newX = nodeStartX - (dragStartX - (double)(dragStartX)) / Zoom;
-            var newY = nodeStartY - (dragStartY - (double)(dragStartY)) / Zoom;
-            
-            await OnPositionChanged.InvokeAsync((newX, newY));
+            OnNodeMouseDown.InvokeAsync((Node, e));
         }
     }
 }

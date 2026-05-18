@@ -56,10 +56,7 @@ builder.Services.AddSingleton<EnhancedTcpService>();
 builder.Services.AddSingleton<EnhancedRtpService>();
 builder.Services.AddSingleton<CommunicationNodeExecutor>();
 
-builder.Services.AddHttpClient<FlowApiService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5000");
-});
+builder.Services.AddSingleton<FlowApiService>();
 
 var maxConcurrency = builder.Configuration.GetValue("Execution:MaxConcurrency", 100);
 var maxQueueSize = builder.Configuration.GetValue("Execution:MaxQueueSize", 10000);

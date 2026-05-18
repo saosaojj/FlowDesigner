@@ -1,5 +1,6 @@
 @page "/flow/{Id}"
 @page "/flow/new"
+@layout FlowEditorLayout
 @inject FlowApiService ApiService
 @inject NavigationManager NavManager
 @implements IDisposable
@@ -76,7 +77,7 @@
             
             <div class="palette-search">
                 <i class="fas fa-search"></i>
-                <input type="text" @bind="searchText" placeholder="搜索节点..." />
+                <input type="text" @bind="searchText" @bind:event="oninput" placeholder="搜索节点..." />
             </div>
             
             <div class="palette-list">
@@ -122,9 +123,10 @@
              @onmousemove="CanvasMouseMove"
              @onmouseup="CanvasMouseUp"
              @onmouseleave="CanvasMouseLeave"
-             @ondragover="AllowDrop"
+             @ondragover:preventDefault="true"
              @ondrop="HandleDrop"
              @oncontextmenu="ShowContextMenu"
+             @oncontextmenu:preventDefault
              id="canvasPanel">
             <svg class="flow-canvas" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -170,13 +172,10 @@
                         <FlowNodeCard Node="node" 
                                      NodeDefinition="GetNodeDefinition(node.Type)"
                                      IsSelected="selectedNodeIds.Contains(node.Id)"
-                                     OnSelect="(e) => HandleNodeSelect(node, e)"
+                                     OnNodeMouseDown="(args) => HandleNodeMouseDown(args.Node, args.Args)"
                                      OnStartConnection="(port) => StartNodeConnection(node, port)"
-                                     OnPositionChanged="(pos) => UpdateNodePosition(node, pos)"
                                      OnDelete="() => DeleteNode(node)"
-                                     Zoom="zoom"
-                                     PanX="panX"
-                                     PanY="panY" />
+                                     Zoom="zoom" />
                     }
                 </g>
             </svg>
@@ -420,6 +419,11 @@
     private double lastMouseX, lastMouseY;
     private ElementReference canvasContainer;
     
+    private FlowNode? draggingNode;
+    private double nodeDragStartX = 0, nodeDragStartY = 0;
+    private double nodeStartX = 0, nodeStartY = 0;
+    private bool nodeHasMoved = false;
+    
     private bool isCreatingConnection = false;
     private TempConnectionInfo? tempConnection;
     private string? connectingNodeId;
@@ -541,12 +545,7 @@
     {
     }
 
-    private void AllowDrop(DragEventArgs e)
-    {
-        e.DataTransfer.DropEffect = "copy";
-    }
-
-    private async Task HandleDrop(DragEventArgs e)
+    private void HandleDrop(DragEventArgs e)
     {
         var nodeType = _dragNodeType;
         if (string.IsNullOrEmpty(nodeType))
@@ -556,7 +555,7 @@
         if (nodeDef == null)
             return;
 
-        var rect = await GetCanvasCoordinates(e);
+        var rect = GetCanvasCoordinates(e);
         var node = CreateNodeFromDefinition(nodeDef, rect.X, rect.Y);
         
         SaveToUndoStack();
@@ -567,12 +566,25 @@
         StateHasChanged();
     }
 
-    private async Task<CanvasPoint> GetCanvasCoordinates(DragEventArgs e)
+    private CanvasPoint GetCanvasCoordinates(DragEventArgs e)
     {
+        var canvasOffsetX = 280;
+        var canvasOffsetY = 56;
         return new CanvasPoint
         {
-            X = (e.ClientX - panX) / zoom,
-            Y = (e.ClientY - panY) / zoom
+            X = (e.ClientX - canvasOffsetX - panX) / zoom,
+            Y = (e.ClientY - canvasOffsetY - panY) / zoom
+        };
+    }
+
+    private CanvasPoint GetCanvasCoordinatesFromMouse(MouseEventArgs e)
+    {
+        var canvasOffsetX = 280;
+        var canvasOffsetY = 56;
+        return new CanvasPoint
+        {
+            X = (e.ClientX - canvasOffsetX - panX) / zoom,
+            Y = (e.ClientY - canvasOffsetY - panY) / zoom
         };
     }
 
@@ -616,12 +628,17 @@
 
     private void HandleWheel(WheelEventArgs e)
     {
+        var canvasOffsetX = 280;
+        var canvasOffsetY = 56;
+        var mouseX = e.ClientX - canvasOffsetX;
+        var mouseY = e.ClientY - canvasOffsetY;
+
         var delta = e.DeltaY > 0 ? -0.1 : 0.1;
         var newZoom = Math.Clamp(zoom + delta, ZoomMin, ZoomMax);
-        
-        panX = e.ClientX - (e.ClientX - panX) * (newZoom / zoom);
-        panY = e.ClientY - (e.ClientY - panY) * (newZoom / zoom);
-        
+
+        panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+        panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+
         zoom = newZoom;
         StateHasChanged();
     }
@@ -645,7 +662,20 @@
 
     private void CanvasMouseMove(MouseEventArgs e)
     {
-        if (isPanning)
+        if (draggingNode != null)
+        {
+            if (!nodeHasMoved)
+            {
+                SaveToUndoStack();
+                nodeHasMoved = true;
+            }
+            var deltaX = (e.ClientX - nodeDragStartX) / zoom;
+            var deltaY = (e.ClientY - nodeDragStartY) / zoom;
+            draggingNode.X = nodeStartX + deltaX;
+            draggingNode.Y = nodeStartY + deltaY;
+            StateHasChanged();
+        }
+        else if (isPanning)
         {
             panX += e.ClientX - lastMouseX;
             panY += e.ClientY - lastMouseY;
@@ -664,25 +694,44 @@
 
     private void CanvasMouseUp(MouseEventArgs e)
     {
+        if (draggingNode != null)
+        {
+            draggingNode = null;
+            nodeHasMoved = false;
+        }
         isPanning = false;
     }
 
     private void CanvasMouseLeave(MouseEventArgs e)
     {
+        if (draggingNode != null)
+        {
+            draggingNode = null;
+            nodeHasMoved = false;
+        }
         isPanning = false;
     }
 
     private CanvasPoint ScreenToCanvas(double screenX, double screenY)
     {
+        var canvasOffsetX = 280;
+        var canvasOffsetY = 56;
         return new CanvasPoint
         {
-            X = (screenX - panX) / zoom,
-            Y = (screenY - panY) / zoom
+            X = (screenX - canvasOffsetX - panX) / zoom,
+            Y = (screenY - canvasOffsetY - panY) / zoom
         };
     }
 
-    private void HandleNodeSelect(FlowNode node, MouseEventArgs e)
+    private void HandleNodeMouseDown(FlowNode node, MouseEventArgs e)
     {
+        draggingNode = node;
+        nodeDragStartX = e.ClientX;
+        nodeDragStartY = e.ClientY;
+        nodeStartX = node.X;
+        nodeStartY = node.Y;
+        nodeHasMoved = false;
+
         if (e.CtrlKey || e.ShiftKey)
         {
             if (selectedNodeIds.Contains(node.Id))
@@ -741,15 +790,6 @@
         var cp = Math.Min(Math.Abs(dx) / 2, 100);
         
         return $"M {tempConnection.StartX} {tempConnection.StartY} C {tempConnection.StartX + cp} {tempConnection.StartY}, {tempConnection.EndX - cp} {tempConnection.EndY}, {tempConnection.EndX} {tempConnection.EndY}";
-    }
-
-    private void UpdateNodePosition(FlowNode node, (double X, double Y) pos)
-    {
-        SaveToUndoStack();
-        node.X = pos.X;
-        node.Y = pos.Y;
-        isDeployed = false;
-        StateHasChanged();
     }
 
     private void UpdateNodeProperty(FlowNode node, string key, string? value)
@@ -853,8 +893,8 @@
     private void ShowContextMenu(MouseEventArgs e)
     {
         showContextMenu = true;
-        contextMenuX = e.ClientX;
-        contextMenuY = e.ClientY;
+        contextMenuX = e.ClientX - 280;
+        contextMenuY = e.ClientY - 56;
     }
 
     private void ZoomIn()
