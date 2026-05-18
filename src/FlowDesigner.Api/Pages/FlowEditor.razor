@@ -5,391 +5,430 @@
 @inject NavigationManager NavManager
 @implements IDisposable
 
-<div class="flow-designer" id="flowDesigner">
-    <div class="designer-header">
-        <div class="header-left">
-            <button class="header-btn back-btn" @onclick="GoBack" title="返回">
+<div class="nr-editor">
+    <div class="nr-header">
+        <div class="nr-header-left">
+            <button class="nr-btn nr-btn-icon" @onclick="GoBack" title="返回列表">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <div class="flow-title">
-                <i class="fas fa-project-diagram"></i>
-                <input type="text" @bind="flowName" @bind:event="oninput" placeholder="流程名称" class="title-input" />
+            <div class="nr-flow-tabs">
+                <div class="nr-flow-tab active">
+                    <i class="fas fa-project-diagram"></i>
+                    <input type="text" @bind="flowName" @bind:event="oninput" class="nr-flow-name" />
+                </div>
             </div>
         </div>
-        
-        <div class="header-center">
-            <div class="action-group">
-                <button class="action-btn" @onclick="() => Undo()" disabled="@(undoStack.Count == 0)" title="撤销">
-                    <i class="fas fa-rotate-left"></i>
+        <div class="nr-header-right">
+            <div class="nr-header-actions">
+                <button class="nr-btn nr-btn-icon" @onclick="() => Undo()" disabled="@(undoStack.Count == 0)" title="撤销 (Ctrl+Z)">
+                    <i class="fas fa-undo"></i>
                 </button>
-                <button class="action-btn" @onclick="() => Redo()" disabled="@(redoStack.Count == 0)" title="重做">
-                    <i class="fas fa-rotate-right"></i>
-                </button>
-            </div>
-            
-            <div class="zoom-controls">
-                <button class="zoom-btn" @onclick="() => ZoomOut()" title="缩小">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <div class="zoom-display">@((zoom * 100).ToString("F0"))%</div>
-                <button class="zoom-btn" @onclick="() => ZoomIn()" title="放大">
-                    <i class="fas fa-plus"></i>
-                </button>
-                <button class="zoom-btn reset" @onclick="() => ZoomReset()" title="重置">
-                    <i class="fas fa-expand"></i>
+                <button class="nr-btn nr-btn-icon" @onclick="() => Redo()" disabled="@(redoStack.Count == 0)" title="重做 (Ctrl+Y)">
+                    <i class="fas fa-redo"></i>
                 </button>
             </div>
-            
-            <div class="view-info">
-                <span class="node-count">
-                    <i class="fas fa-cube"></i>
-                    @CurrentFlow.Nodes.Count 节点
-                </span>
-                <span class="connection-count">
-                    <i class="fas fa-link"></i>
-                    @CurrentFlow.Connections.Count 连接
-                </span>
-            </div>
-        </div>
-        
-        <div class="header-right">
-            <button class="action-btn" @onclick="ShowImportDialog" title="导入">
-                <i class="fas fa-file-import"></i>
-            </button>
-            <button class="action-btn" @onclick="ExportFlow" title="导出">
-                <i class="fas fa-file-export"></i>
-            </button>
-            <button class="deploy-btn @(isDeployed ? "deployed" : "")" @onclick="DeployFlow">
+            <button class="nr-deploy-btn @(isDeployed ? "deployed" : "")" @onclick="DeployFlow">
                 <i class="fas fa-rocket"></i>
                 @(isDeployed ? "已部署" : "部署")
             </button>
         </div>
     </div>
-    
-    <div class="designer-body">
-        <div class="palette-panel">
-            <div class="palette-header">
-                <h3>
-                    <i class="fas fa-puzzle-piece"></i>
-                    节点库
-                </h3>
-            </div>
-            
-            <div class="palette-search">
-                <i class="fas fa-search"></i>
-                <input type="text" @bind="searchText" @bind:event="oninput" placeholder="搜索节点..." />
-            </div>
-            
-            <div class="palette-list">
-                @foreach (var category in FilteredCategories)
+
+    <div class="nr-workspace">
+        <div class="nr-palette @(paletteCollapsed ? "collapsed" : "")">
+            <div class="nr-palette-header">
+                <button class="nr-btn nr-btn-icon nr-collapse-btn" @onclick="TogglePalette" title="折叠面板">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                @if (!paletteCollapsed)
                 {
-                    <div class="palette-category">
-                        <div class="category-title" @onclick="() => ToggleCategory(category.Key)">
-                            <i class="fas @(expandedCategories.Contains(category.Key) ? "fa-chevron-down" : "fa-chevron-right")"></i>
-                            <span>@GetCategoryLabel(category.Key)</span>
-                            <span class="category-badge">@category.Value.Count</span>
-                        </div>
-                        
-                        @if (expandedCategories.Contains(category.Key))
-                        {
-                            <div class="category-items">
-                                @foreach (var node in category.Value)
-                                {
-                                    <div class="palette-item" 
-                                         draggable="true"
-                                         @ondragstart="(e) => StartDragNode(e, node)"
-                                         @ondragend="EndDragNode"
-                                         title="@node.Description">
-                                        <div class="item-icon" style="background: linear-gradient(135deg, @node.Color, @AdjustColor(node.Color))">
-                                            <i class="fas @node.Icon"></i>
-                                        </div>
-                                        <div class="item-info">
-                                            <span class="item-name">@node.Name</span>
-                                            <span class="item-type">@node.Type</span>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
+                    <span class="nr-palette-title">节点</span>
                 }
             </div>
-        </div>
-        
-        <div class="canvas-panel" 
-             @ref="canvasContainer"
-             @onwheel="HandleWheel"
-             @onmousedown="CanvasMouseDown"
-             @onmousemove="CanvasMouseMove"
-             @onmouseup="CanvasMouseUp"
-             @onmouseleave="CanvasMouseLeave"
-             @ondragover:preventDefault="true"
-             @ondrop="HandleDrop"
-             @oncontextmenu="ShowContextMenu"
-             @oncontextmenu:preventDefault
-             id="canvasPanel">
-            <svg class="flow-canvas" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="gridSmall" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <circle cx="1" cy="1" r="0.5" fill="rgba(99, 102, 241, 0.3)" />
-                    </pattern>
-                    <pattern id="gridLarge" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <rect width="100" height="100" fill="url(#gridSmall)" />
-                        <circle cx="50" cy="50" r="1" fill="rgba(99, 102, 241, 0.5)" />
-                    </pattern>
-                    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="url(#gradient1)" />
-                    </marker>
-                    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#6366f1" />
-                        <stop offset="100%" style="stop-color:#8b5cf6" />
-                    </linearGradient>
-                </defs>
-                
-                <rect width="100%" height="100%" fill="url(#gridLarge)" />
-                
-                <g transform="translate(@panX, @panY) scale(@zoom)">
-                    @foreach (var connection in CurrentFlow.Connections)
-                    {
-                        <FlowConnectionLine Connection="connection" 
-                                           Nodes="CurrentFlow.Nodes"
-                                           IsSelected="selectedConnectionId == connection.Id"
-                                           OnClick="() => SelectConnection(connection)" />
-                    }
-                    
-                    @if (isCreatingConnection && tempConnection != null)
-                    {
-                        <path d="@GetTempConnectionPath()" 
-                              stroke="#6366f1" 
-                              stroke-width="2" 
-                              stroke-dasharray="8,4"
-                              fill="none"
-                              class="temp-connection" />
-                    }
-                    
-                    @foreach (var node in CurrentFlow.Nodes)
-                    {
-                        <FlowNodeCard Node="node" 
-                                     NodeDefinition="GetNodeDefinition(node.Type)"
-                                     IsSelected="selectedNodeIds.Contains(node.Id)"
-                                     OnNodeMouseDown="(args) => HandleNodeMouseDown(args.Node, args.Args)"
-                                     OnStartConnection="(port) => StartNodeConnection(node, port)"
-                                     OnDelete="() => DeleteNode(node)"
-                                     Zoom="zoom" />
-                    }
-                </g>
-            </svg>
-            
-            @if (showContextMenu)
+            @if (!paletteCollapsed)
             {
-                <div class="context-menu" style="left: @contextMenuX; top: @contextMenuY">
-                    <button class="menu-item" @onclick="CopySelectedNodes">
-                        <i class="fas fa-copy"></i>
-                        <span>复制</span>
-                        <kbd>Ctrl+C</kbd>
-                    </button>
-                    <button class="menu-item" @onclick="PasteNodes">
-                        <i class="fas fa-paste"></i>
-                        <span>粘贴</span>
-                        <kbd>Ctrl+V</kbd>
-                    </button>
-                    <button class="menu-item" @onclick="DuplicateNodes">
-                        <i class="fas fa-clone"></i>
-                        <span>复制并粘贴</span>
-                    </button>
-                    <div class="menu-divider"></div>
-                    <button class="menu-item danger" @onclick="DeleteSelectedNodes">
-                        <i class="fas fa-trash"></i>
-                        <span>删除</span>
-                        <kbd>Del</kbd>
-                    </button>
+                <div class="nr-palette-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" @bind="searchText" @bind:event="oninput" placeholder="搜索节点..." />
+                    @if (!string.IsNullOrWhiteSpace(searchText))
+                    {
+                        <button class="nr-search-clear" @onclick="ClearSearch">&times;</button>
+                    }
+                </div>
+                <div class="nr-palette-nodes">
+                    @foreach (var category in FilteredCategories)
+                    {
+                        <div class="nr-palette-category">
+                            <div class="nr-category-header" @onclick="() => ToggleCategory(category.Key)">
+                                <i class="fas @(expandedCategories.Contains(category.Key) ? "fa-chevron-down" : "fa-chevron-right")"></i>
+                                <span>@GetCategoryLabel(category.Key)</span>
+                                <span class="nr-category-count">@category.Value.Count</span>
+                            </div>
+                            @if (expandedCategories.Contains(category.Key))
+                            {
+                                <div class="nr-category-items">
+                                    @foreach (var node in category.Value)
+                                    {
+                                        <div class="nr-palette-node"
+                                             draggable="true"
+                                             @ondragstart="(e) => StartDragNode(e, node)"
+                                             @ondragend="EndDragNode"
+                                             title="@node.Description">
+                                            <div class="nr-palette-node-color" style="background-color: @node.Color">
+                                                <i class="fas @node.Icon"></i>
+                                            </div>
+                                            <span class="nr-palette-node-label">@node.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (FilteredCategories.Count == 0)
+                    {
+                        <div class="nr-palette-empty">
+                            <i class="fas fa-search"></i>
+                            <p>没有找到匹配的节点</p>
+                        </div>
+                    }
                 </div>
             }
         </div>
-        
-        <div class="properties-panel">
-            <div class="panel-header">
-                <div class="panel-tabs">
-                    <button class="panel-tab @(activeTab == "properties" ? "active" : "")" 
-                            @onclick='() => activeTab = "properties"'>
-                        <i class="fas fa-sliders-h"></i>
-                        属性
-                    </button>
-                    <button class="panel-tab @(activeTab == "debug" ? "active" : "")" 
-                            @onclick='() => activeTab = "debug"'>
-                        <i class="fas fa-terminal"></i>
-                        调试
-                        @if (debugMessages.Count > 0)
+
+        <div class="nr-canvas-container">
+            <div class="nr-canvas"
+                 @ref="canvasContainer"
+                 @onwheel="HandleWheel"
+                 @onmousedown="CanvasMouseDown"
+                 @onmousemove="CanvasMouseMove"
+                 @onmouseup="CanvasMouseUp"
+                 @onmouseleave="CanvasMouseLeave"
+                 @ondragover:preventDefault="true"
+                 @ondrop="HandleDrop"
+                 @oncontextmenu="ShowContextMenu"
+                 @oncontextmenu:preventDefault
+                 id="canvasPanel">
+                <svg class="nr-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <pattern id="nrGridSmall" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <circle cx="10" cy="10" r="0.5" fill="rgba(0,0,0,0.1)" />
+                        </pattern>
+                        <pattern id="nrGridLarge" width="100" height="100" patternUnits="userSpaceOnUse">
+                            <rect width="100" height="100" fill="url(#nrGridSmall)" />
+                            <circle cx="50" cy="50" r="1" fill="rgba(0,0,0,0.15)" />
+                        </pattern>
+                        <marker id="nrArrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                            <polygon points="0 0, 8 3, 0 6" fill="#999" />
+                        </marker>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#nrGridLarge)" />
+                    <g transform="translate(@panX, @panY) scale(@zoom)">
+                        @foreach (var connection in CurrentFlow.Connections)
                         {
-                            <span class="tab-badge">@debugMessages.Count</span>
+                            <FlowConnectionLine Connection="connection"
+                                               Nodes="CurrentFlow.Nodes"
+                                               IsSelected="selectedConnectionId == connection.Id"
+                                               OnClick="() => SelectConnection(connection)" />
                         }
-                    </button>
-                </div>
-            </div>
-            
-            <div class="panel-content">
-                @if (activeTab == "properties")
+                        @if (isCreatingConnection && tempConnection != null)
+                        {
+                            <path d="@GetTempConnectionPath()"
+                                  stroke="#999"
+                                  stroke-width="2"
+                                  stroke-dasharray="6,3"
+                                  fill="none" />
+                        }
+                        @foreach (var node in CurrentFlow.Nodes)
+                        {
+                            <FlowNodeCard Node="node"
+                                         NodeDefinition="GetNodeDefinition(node.Type)"
+                                         IsSelected="selectedNodeIds.Contains(node.Id)"
+                                         OnNodeMouseDown="(args) => HandleNodeMouseDown(args.Node, args.Args)"
+                                         OnNodeDoubleClick="() => HandleNodeDoubleClick(node)"
+                                         OnStartConnection="(port) => StartNodeConnection(node, port)"
+                                         OnDelete="() => DeleteNode(node)"
+                                         Zoom="zoom" />
+                        }
+                    </g>
+                </svg>
+
+                @if (showContextMenu)
                 {
-                    @if (selectedNodeIds.Count == 1)
-                    {
-                        var node = CurrentFlow.Nodes.First(n => n.Id == selectedNodeIds.First());
-                        var def = GetNodeDefinition(node.Type);
-                        <div class="property-section">
-                            <div class="property-header">
-                                <div class="header-icon" style="background: @def?.Color">
-                                    <i class="fas @def?.Icon"></i>
-                                </div>
-                                <div class="header-info">
-                                    <h4>@def?.Name</h4>
-                                    <span class="node-type">@node.Type</span>
-                                </div>
-                            </div>
-                            
-                            <div class="property-form">
-                                <div class="form-field">
-                                    <label>显示名称</label>
-                                    <input type="text" @bind="node.Label" placeholder="输入名称..." />
-                                </div>
-                                
-                                @if (def != null)
-                                {
-                                    @foreach (var prop in def.Properties)
-                                    {
-                                        <div class="form-field">
-                                            <label>@(prop.Value.Label ?? prop.Key)</label>
-                                            @switch (prop.Value.Type)
-                                            {
-                                                case "string":
-                                                    <input type="text" 
-                                                           value="@node.Properties.GetValueOrDefault(prop.Key)" 
-                                                           @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
-                                                    break;
-                                                case "number":
-                                                    <input type="number" 
-                                                           value="@node.Properties.GetValueOrDefault(prop.Key)" 
-                                                           @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
-                                                    break;
-                                                case "boolean":
-                                                    <label class="toggle">
-                                                        <input type="checkbox" 
-                                                               checked="@(node.Properties.GetValueOrDefault(prop.Key)?.ToString() == "True")"
-                                                               @onchange="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
-                                                        <span class="toggle-slider"></span>
-                                                    </label>
-                                                    break;
-                                                case "textarea":
-                                                case "code":
-                                                    <textarea rows="5"
-                                                              value="@node.Properties.GetValueOrDefault(prop.Key)"
-                                                              @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())"></textarea>
-                                                    break;
-                                            }
-                                        </div>
-                                    }
-                                }
-                            </div>
-                            
-                            <button class="delete-btn" @onclick="() => DeleteNode(node)">
-                                <i class="fas fa-trash"></i>
-                                删除此节点
-                            </button>
-                        </div>
-                    }
-                    else if (selectedNodeIds.Count > 1)
-                    {
-                        <div class="multi-selection">
-                            <div class="selection-icon">
-                                <i class="fas fa-object-group"></i>
-                            </div>
-                            <h4>已选择 @selectedNodeIds.Count 个节点</h4>
-                            <p>支持批量删除操作</p>
-                            <button class="delete-btn" @onclick="DeleteSelectedNodes">
-                                <i class="fas fa-trash"></i>
-                                删除所有选中
-                            </button>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="no-selection">
-                            <div class="empty-icon">
-                                <i class="fas fa-mouse-pointer"></i>
-                            </div>
-                            <h4>未选择节点</h4>
-                            <p>从左侧拖拽节点到画布，或点击画布上的节点</p>
-                        </div>
-                    }
-                }
-                else if (activeTab == "debug")
-                {
-                    <div class="debug-section">
-                        <div class="debug-toolbar">
-                            <span class="debug-title">
-                                <i class="fas fa-bug"></i>
-                                调试输出
-                            </span>
-                            <button class="clear-btn" @onclick="ClearDebugMessages">
-                                <i class="fas fa-trash-alt"></i>
-                                清空
-                            </button>
-                        </div>
-                        
-                        <div class="debug-messages">
-                            @foreach (var msg in debugMessages)
-                            {
-                                <div class="debug-entry @msg.Level">
-                                    <div class="entry-time">@msg.Timestamp.ToString("HH:mm:ss")</div>
-                                    <div class="entry-content">
-                                        <span class="entry-source">@msg.Source</span>
-                                        <pre class="entry-text">@msg.Message</pre>
-                                    </div>
-                                </div>
-                            }
-                            
-                            @if (debugMessages.Count == 0)
-                            {
-                                <div class="no-debug">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>暂无调试信息</p>
-                                </div>
-                            }
-                        </div>
+                    <div class="nr-context-menu" style="left: @contextMenuXpx; top: @contextMenuYpx">
+                        <button class="nr-menu-item" @onclick="CopySelectedNodes">
+                            <i class="fas fa-copy"></i> 复制 <kbd>Ctrl+C</kbd>
+                        </button>
+                        <button class="nr-menu-item" @onclick="PasteNodes">
+                            <i class="fas fa-paste"></i> 粘贴 <kbd>Ctrl+V</kbd>
+                        </button>
+                        <button class="nr-menu-item" @onclick="DuplicateNodes">
+                            <i class="fas fa-clone"></i> 复制并粘贴
+                        </button>
+                        <div class="nr-menu-divider"></div>
+                        <button class="nr-menu-item nr-menu-danger" @onclick="DeleteSelectedNodes">
+                            <i class="fas fa-trash"></i> 删除 <kbd>Del</kbd>
+                        </button>
                     </div>
                 }
+
+                <div class="nr-zoom-controls">
+                    <button class="nr-btn nr-btn-zoom" @onclick="ZoomOut" title="缩小">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span class="nr-zoom-level">@((zoom * 100).ToString("F0"))%</span>
+                    <button class="nr-btn nr-btn-zoom" @onclick="ZoomIn" title="放大">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="nr-btn nr-btn-zoom" @onclick="ZoomReset" title="重置视图">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                </div>
+
+                <div class="nr-canvas-info">
+                    <span><i class="fas fa-cube"></i> @CurrentFlow.Nodes.Count</span>
+                    <span><i class="fas fa-link"></i> @CurrentFlow.Connections.Count</span>
+                </div>
             </div>
         </div>
+
+        <div class="nr-sidebar @(sidebarCollapsed ? "collapsed" : "")">
+            <div class="nr-sidebar-header">
+                @if (!sidebarCollapsed)
+                {
+                    <div class="nr-sidebar-tabs">
+                        <button class="nr-sidebar-tab @(activeTab == "info" ? "active" : "")" @onclick='() => activeTab = "info"'>
+                            <i class="fas fa-info-circle"></i> 信息
+                        </button>
+                        <button class="nr-sidebar-tab @(activeTab == "debug" ? "active" : "")" @onclick='() => activeTab = "debug"'>
+                            <i class="fas fa-bug"></i> 调试
+                            @if (debugMessages.Count > 0)
+                            {
+                                <span class="nr-tab-badge">@debugMessages.Count</span>
+                            }
+                        </button>
+                    </div>
+                }
+                <button class="nr-btn nr-btn-icon nr-collapse-btn" @onclick="ToggleSidebar" title="折叠面板">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            @if (!sidebarCollapsed)
+            {
+                <div class="nr-sidebar-content">
+                    @if (activeTab == "info")
+                    {
+                        @if (selectedNodeIds.Count == 1)
+                        {
+                            var node = CurrentFlow.Nodes.FirstOrDefault(n => n.Id == selectedNodeIds.First());
+                            var def = node != null ? GetNodeDefinition(node.Type) : null;
+                            <div class="nr-info-panel">
+                                <div class="nr-info-header">
+                                    <div class="nr-info-icon" style="background-color: @def?.Color">
+                                        <i class="fas @def?.Icon"></i>
+                                    </div>
+                                    <div class="nr-info-title">
+                                        <h4>@def?.Name</h4>
+                                        <span class="nr-info-type">@node?.Type</span>
+                                    </div>
+                                </div>
+                                <div class="nr-info-desc">@(def?.Description ?? "")</div>
+                                <div class="nr-info-props">
+                                    <div class="nr-prop-field">
+                                        <label>名称</label>
+                                        <input type="text" @bind="node!.Label" placeholder="节点名称..." />
+                                    </div>
+                                    @if (def != null)
+                                    {
+                                        @foreach (var prop in def.Properties)
+                                        {
+                                            <div class="nr-prop-field">
+                                                <label>@(prop.Value.Label ?? prop.Key)</label>
+                                                @switch (prop.Value.Type)
+                                                {
+                                                    case "string":
+                                                        <input type="text"
+                                                               value="@node.Properties.GetValueOrDefault(prop.Key)"
+                                                               @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
+                                                        break;
+                                                    case "number":
+                                                        <input type="number"
+                                                               value="@node.Properties.GetValueOrDefault(prop.Key)"
+                                                               @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
+                                                        break;
+                                                    case "boolean":
+                                                        <label class="nr-toggle">
+                                                            <input type="checkbox"
+                                                                   checked="@(node.Properties.GetValueOrDefault(prop.Key)?.ToString() == "True")"
+                                                                   @onchange="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())" />
+                                                            <span class="nr-toggle-slider"></span>
+                                                        </label>
+                                                        break;
+                                                    case "textarea":
+                                                    case "code":
+                                                        <textarea rows="6"
+                                                                  value="@node.Properties.GetValueOrDefault(prop.Key)"
+                                                                  @oninput="(e) => UpdateNodeProperty(node, prop.Key, e.Value?.ToString())"></textarea>
+                                                        break;
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <button class="nr-btn nr-btn-delete" @onclick="() => DeleteNode(node!)">
+                                    <i class="fas fa-trash"></i> 删除节点
+                                </button>
+                            </div>
+                        }
+                        else if (selectedNodeIds.Count > 1)
+                        {
+                            <div class="nr-info-empty">
+                                <i class="fas fa-object-group"></i>
+                                <p>已选择 @selectedNodeIds.Count 个节点</p>
+                                <button class="nr-btn nr-btn-delete" @onclick="DeleteSelectedNodes">
+                                    <i class="fas fa-trash"></i> 删除选中
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="nr-info-empty">
+                                <i class="fas fa-mouse-pointer"></i>
+                                <p>选择一个节点查看信息</p>
+                            </div>
+                        }
+                    }
+                    else if (activeTab == "debug")
+                    {
+                        <div class="nr-debug-panel">
+                            <div class="nr-debug-toolbar">
+                                <span><i class="fas fa-bug"></i> 调试输出</span>
+                                <button class="nr-btn nr-btn-sm" @onclick="ClearDebugMessages">
+                                    <i class="fas fa-trash-alt"></i> 清空
+                                </button>
+                            </div>
+                            <div class="nr-debug-messages">
+                                @foreach (var msg in debugMessages)
+                                {
+                                    <div class="nr-debug-entry nr-debug-@msg.Level">
+                                        <span class="nr-debug-time">@msg.Timestamp.ToString("HH:mm:ss")</span>
+                                        <span class="nr-debug-source">[@msg.Source]</span>
+                                        <pre class="nr-debug-text">@msg.Message</pre>
+                                    </div>
+                                }
+                                @if (debugMessages.Count == 0)
+                                {
+                                    <div class="nr-info-empty">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>暂无调试信息</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
-    
-    @if (showImportDialog)
+
+    @if (showEditDialog && editingNode != null)
     {
-        <div class="modal-overlay" @onclick="CloseImportDialog">
-            <div class="modal-box" @onclick:stopPropagation="true">
-                <div class="modal-header">
-                    <h3>
-                        <i class="fas fa-file-import"></i>
-                        @(isExporting ? "导出流程" : "导入流程")
-                    </h3>
-                    <button class="modal-close" @onclick="CloseImportDialog">
+        var editDef = GetNodeDefinition(editingNode.Type);
+        <div class="nr-dialog-overlay" @onclick="CloseEditDialog">
+            <div class="nr-dialog" @onclick:stopPropagation="true">
+                <div class="nr-dialog-header" style="border-left: 4px solid @editDef?.Color">
+                    <div class="nr-dialog-title">
+                        <i class="fas @editDef?.Icon" style="color: @editDef?.Color"></i>
+                        <span>@(editDef?.Name ?? "编辑节点")</span>
+                    </div>
+                    <button class="nr-btn nr-btn-icon" @onclick="CloseEditDialog">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <textarea @bind="importJson" 
-                              placeholder="在此粘贴 JSON 数据..."
-                              rows="15"></textarea>
+                <div class="nr-dialog-body">
+                    <div class="nr-prop-field">
+                        <label>节点名称</label>
+                        <input type="text" @bind="editingNode.Label" placeholder="输入节点名称..." />
+                    </div>
+                    @if (editDef != null)
+                    {
+                        @foreach (var prop in editDef.Properties)
+                        {
+                            <div class="nr-prop-field">
+                                <label>@(prop.Value.Label ?? prop.Key)</label>
+                                @switch (prop.Value.Type)
+                                {
+                                    case "string":
+                                        <input type="text"
+                                               value="@editingNode.Properties.GetValueOrDefault(prop.Key)"
+                                               @oninput="(e) => UpdateNodeProperty(editingNode, prop.Key, e.Value?.ToString())" />
+                                        break;
+                                    case "number":
+                                        <input type="number"
+                                               value="@editingNode.Properties.GetValueOrDefault(prop.Key)"
+                                               @oninput="(e) => UpdateNodeProperty(editingNode, prop.Key, e.Value?.ToString())" />
+                                        break;
+                                    case "boolean":
+                                        <label class="nr-toggle">
+                                            <input type="checkbox"
+                                                   checked="@(editingNode.Properties.GetValueOrDefault(prop.Key)?.ToString() == "True")"
+                                                   @onchange="(e) => UpdateNodeProperty(editingNode, prop.Key, e.Value?.ToString())" />
+                                            <span class="nr-toggle-slider"></span>
+                                        </label>
+                                        break;
+                                    case "textarea":
+                                        <textarea rows="4"
+                                                  value="@editingNode.Properties.GetValueOrDefault(prop.Key)"
+                                                  @oninput="(e) => UpdateNodeProperty(editingNode, prop.Key, e.Value?.ToString())"></textarea>
+                                        break;
+                                    case "code":
+                                        <textarea rows="10"
+                                                  class="nr-code-editor"
+                                                  value="@editingNode.Properties.GetValueOrDefault(prop.Key)"
+                                                  @oninput="(e) => UpdateNodeProperty(editingNode, prop.Key, e.Value?.ToString())"></textarea>
+                                        break;
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="nr-dialog-footer">
+                    <button class="nr-btn nr-btn-delete" @onclick="() => { DeleteNode(editingNode); CloseEditDialog(); }">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                    <div class="nr-dialog-footer-right">
+                        <button class="nr-btn nr-btn-secondary" @onclick="CloseEditDialog">取消</button>
+                        <button class="nr-btn nr-btn-primary" @onclick="CloseEditDialog">完成</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showImportDialog)
+    {
+        <div class="nr-dialog-overlay" @onclick="CloseImportDialog">
+            <div class="nr-dialog" @onclick:stopPropagation="true">
+                <div class="nr-dialog-header">
+                    <div class="nr-dialog-title">
+                        <i class="fas @(isExporting ? "fa-file-export" : "fa-file-import")"></i>
+                        <span>@(isExporting ? "导出流程" : "导入流程")</span>
+                    </div>
+                    <button class="nr-btn nr-btn-icon" @onclick="CloseImportDialog">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="nr-dialog-body">
+                    <textarea @bind="importJson" placeholder="在此粘贴 JSON 数据..." rows="15" class="nr-code-editor"></textarea>
                     @if (!isExporting)
                     {
-                        <p class="import-hint">
-                            <i class="fas fa-info-circle"></i>
-                            导入将替换当前流程
+                        <p class="nr-import-hint">
+                            <i class="fas fa-info-circle"></i> 导入将替换当前流程
                         </p>
                     }
                 </div>
-                <div class="modal-footer">
-                    <button class="modal-btn secondary" @onclick="CloseImportDialog">
-                        取消
-                    </button>
-                    <button class="modal-btn primary" @onclick="HandleImportExport">
+                <div class="nr-dialog-footer">
+                    <button class="nr-btn nr-btn-secondary" @onclick="CloseImportDialog">取消</button>
+                    <button class="nr-btn nr-btn-primary" @onclick="HandleImportExport">
                         <i class="fas @(isExporting ? "fa-check" : "fa-file-import")"></i>
                         @(isExporting ? "完成" : "导入")
                     </button>
@@ -413,37 +452,44 @@
     private string? selectedConnectionId;
     private double panX = 0, panY = 0;
     private double zoom = 1.0;
-    private const double ZoomMin = 0.25;
-    private const double ZoomMax = 2.0;
+    private const double ZoomMin = 0.2;
+    private const double ZoomMax = 3.0;
     private bool isPanning = false;
     private double lastMouseX, lastMouseY;
     private ElementReference canvasContainer;
-    
+
     private FlowNode? draggingNode;
     private double nodeDragStartX = 0, nodeDragStartY = 0;
     private double nodeStartX = 0, nodeStartY = 0;
     private bool nodeHasMoved = false;
-    
+
     private bool isCreatingConnection = false;
     private TempConnectionInfo? tempConnection;
     private string? connectingNodeId;
     private string? connectingPortId;
     private string? _dragNodeType;
-    
+
     private bool showContextMenu = false;
-    private double contextMenuX = 0, contextMenuY = 0;
-    
-    private string activeTab = "properties";
+    private string contextMenuXpx = "0px";
+    private string contextMenuYpx = "0px";
+
+    private string activeTab = "info";
     private List<DebugMessage> debugMessages = new();
-    
+
     private List<Flow> undoStack = new();
     private List<Flow> redoStack = new();
-    
+
     private List<FlowNode> copiedNodes = new();
     private bool isDeployed = false;
     private bool showImportDialog = false;
     private bool isExporting = false;
     private string importJson = "";
+
+    private bool paletteCollapsed = false;
+    private bool sidebarCollapsed = false;
+
+    private bool showEditDialog = false;
+    private FlowNode? editingNode;
 
     private Dictionary<string, List<NodeDefinition>> FilteredCategories
     {
@@ -451,12 +497,12 @@
         {
             if (string.IsNullOrWhiteSpace(searchText))
                 return nodeCategories;
-            
+
             return nodeCategories
                 .Select(kvp => new KeyValuePair<string, List<NodeDefinition>>(
                     kvp.Key,
                     kvp.Value.Where(n => n.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                                        n.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList()
+                                        (n.Description ?? "").Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList()
                 ))
                 .Where(kvp => kvp.Value.Count > 0)
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
@@ -471,13 +517,26 @@
 
     private async Task LoadFlowAsync()
     {
-        var flow = await ApiService.GetFlowAsync(Id);
-        if (flow != null)
+        try
         {
-            CurrentFlow = flow;
-            flowName = flow.Name;
+            var flow = await ApiService.GetFlowAsync(Id);
+            if (flow != null)
+            {
+                CurrentFlow = flow;
+                flowName = flow.Name;
+            }
+            else
+            {
+                CurrentFlow = new Flow
+                {
+                    Id = Id,
+                    Name = "新流程",
+                    Nodes = new List<FlowNode>(),
+                    Connections = new List<Shared.Models.FlowConnection>()
+                };
+            }
         }
-        else
+        catch
         {
             CurrentFlow = new Flow
             {
@@ -491,13 +550,20 @@
 
     private async Task LoadNodeDefinitionsAsync()
     {
-        nodeDefinitions = await ApiService.GetNodeDefinitionsAsync();
-        if (nodeDefinitions != null)
+        try
         {
-            nodeCategories = nodeDefinitions
-                .GroupBy(n => n.Category)
-                .ToDictionary(g => g.Key, g => g.ToList());
-            expandedCategories = new HashSet<string>(nodeCategories.Keys);
+            nodeDefinitions = await ApiService.GetNodeDefinitionsAsync();
+            if (nodeDefinitions != null)
+            {
+                nodeCategories = nodeDefinitions
+                    .GroupBy(n => n.Category)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+                expandedCategories = new HashSet<string>(nodeCategories.Keys);
+            }
+        }
+        catch
+        {
+            nodeCategories = new();
         }
     }
 
@@ -510,14 +576,15 @@
     {
         return category switch
         {
-            "input" => "输入节点",
-            "output" => "输出节点",
-            "function" => "功能节点",
-            "network" => "网络节点",
-            "social" => "社交节点",
-            "storage" => "存储节点",
-            "analysis" => "分析节点",
-            "advanced" => "高级节点",
+            "input" => "输入",
+            "output" => "输出",
+            "function" => "功能",
+            "network" => "网络",
+            "social" => "社交",
+            "storage" => "存储",
+            "analysis" => "分析",
+            "advanced" => "高级",
+            "plc" => "PLC 通讯",
             _ => category
         };
     }
@@ -530,10 +597,9 @@
             expandedCategories.Add(category);
     }
 
-    private string AdjustColor(string color)
-    {
-        return color + "cc";
-    }
+    private void TogglePalette() => paletteCollapsed = !paletteCollapsed;
+    private void ToggleSidebar() => sidebarCollapsed = !sidebarCollapsed;
+    private void ClearSearch() => searchText = "";
 
     private void StartDragNode(DragEventArgs e, NodeDefinition nodeDef)
     {
@@ -541,9 +607,7 @@
         e.DataTransfer.EffectAllowed = "copy";
     }
 
-    private void EndDragNode(DragEventArgs e)
-    {
-    }
+    private void EndDragNode(DragEventArgs e) { }
 
     private void HandleDrop(DragEventArgs e)
     {
@@ -557,7 +621,7 @@
 
         var rect = GetCanvasCoordinates(e);
         var node = CreateNodeFromDefinition(nodeDef, rect.X, rect.Y);
-        
+
         SaveToUndoStack();
         CurrentFlow.Nodes.Add(node);
         selectedNodeIds = new HashSet<string> { node.Id };
@@ -568,19 +632,8 @@
 
     private CanvasPoint GetCanvasCoordinates(DragEventArgs e)
     {
-        var canvasOffsetX = 280;
-        var canvasOffsetY = 56;
-        return new CanvasPoint
-        {
-            X = (e.ClientX - canvasOffsetX - panX) / zoom,
-            Y = (e.ClientY - canvasOffsetY - panY) / zoom
-        };
-    }
-
-    private CanvasPoint GetCanvasCoordinatesFromMouse(MouseEventArgs e)
-    {
-        var canvasOffsetX = 280;
-        var canvasOffsetY = 56;
+        var canvasOffsetX = paletteCollapsed ? 40 : 220;
+        var canvasOffsetY = 40;
         return new CanvasPoint
         {
             X = (e.ClientX - canvasOffsetX - panX) / zoom,
@@ -595,8 +648,8 @@
             Id = Guid.NewGuid().ToString(),
             Type = def.Type,
             Label = def.Name,
-            X = x - 75,
-            Y = y - 30,
+            X = x - 60,
+            Y = y - 15,
             Properties = def.Properties.ToDictionary(
                 p => p.Key,
                 p => p.Value.DefaultValue
@@ -628,8 +681,8 @@
 
     private void HandleWheel(WheelEventArgs e)
     {
-        var canvasOffsetX = 280;
-        var canvasOffsetY = 56;
+        var canvasOffsetX = paletteCollapsed ? 40 : 220;
+        var canvasOffsetY = 40;
         var mouseX = e.ClientX - canvasOffsetX;
         var mouseY = e.ClientY - canvasOffsetY;
 
@@ -656,6 +709,12 @@
                 isPanning = true;
                 lastMouseX = e.ClientX;
                 lastMouseY = e.ClientY;
+                if (!e.CtrlKey && !e.ShiftKey)
+                {
+                    selectedNodeIds.Clear();
+                    selectedConnectionId = null;
+                }
+                showContextMenu = false;
             }
         }
     }
@@ -714,8 +773,8 @@
 
     private CanvasPoint ScreenToCanvas(double screenX, double screenY)
     {
-        var canvasOffsetX = 280;
-        var canvasOffsetY = 56;
+        var canvasOffsetX = paletteCollapsed ? 40 : 220;
+        var canvasOffsetY = 40;
         return new CanvasPoint
         {
             X = (screenX - canvasOffsetX - panX) / zoom,
@@ -741,9 +800,23 @@
         }
         else
         {
-            selectedNodeIds = new HashSet<string> { node.Id };
+            if (!selectedNodeIds.Contains(node.Id))
+                selectedNodeIds = new HashSet<string> { node.Id };
         }
+        showContextMenu = false;
         StateHasChanged();
+    }
+
+    private void HandleNodeDoubleClick(FlowNode node)
+    {
+        editingNode = node;
+        showEditDialog = true;
+    }
+
+    private void CloseEditDialog()
+    {
+        showEditDialog = false;
+        editingNode = null;
     }
 
     private void SelectConnection(Shared.Models.FlowConnection connection)
@@ -755,9 +828,9 @@
 
     private void StartNodeConnection(FlowNode node, NodePort port)
     {
-        var nodeX = node.X + 150;
-        var nodeY = node.Y + 35;
-        
+        var nodeX = node.X + 120;
+        var nodeY = node.Y + 15;
+
         tempConnection = new TempConnectionInfo
         {
             StartX = nodeX,
@@ -767,7 +840,7 @@
             SourceNodeId = node.Id,
             SourcePortId = port.Id
         };
-        
+
         connectingNodeId = node.Id;
         connectingPortId = port.Id;
         isCreatingConnection = true;
@@ -785,10 +858,10 @@
     {
         if (tempConnection == null)
             return "";
-        
+
         var dx = tempConnection.EndX - tempConnection.StartX;
-        var cp = Math.Min(Math.Abs(dx) / 2, 100);
-        
+        var cp = Math.Max(Math.Abs(dx) / 2, 50);
+
         return $"M {tempConnection.StartX} {tempConnection.StartY} C {tempConnection.StartX + cp} {tempConnection.StartY}, {tempConnection.EndX - cp} {tempConnection.EndY}, {tempConnection.EndX} {tempConnection.EndY}";
     }
 
@@ -817,16 +890,16 @@
             return;
 
         SaveToUndoStack();
-        
+
         var nodesToRemove = CurrentFlow.Nodes.Where(n => selectedNodeIds.Contains(n.Id)).ToList();
         foreach (var node in nodesToRemove)
         {
             CurrentFlow.Nodes.Remove(node);
             CurrentFlow.Connections.RemoveAll(c => c.SourceNodeId == node.Id || c.TargetNodeId == node.Id);
         }
-        
+
         CurrentFlow.Connections.RemoveAll(c => selectedConnectionId == c.Id);
-        
+
         selectedNodeIds.Clear();
         selectedConnectionId = null;
         isDeployed = false;
@@ -839,7 +912,7 @@
     {
         copiedNodes = CurrentFlow.Nodes.Where(n => selectedNodeIds.Contains(n.Id)).ToList();
         showContextMenu = false;
-        AddDebugMessage("info", $"已复制 {copiedNodes.Count} 个节点到剪贴板");
+        AddDebugMessage("info", $"已复制 {copiedNodes.Count} 个节点");
     }
 
     private void PasteNodes()
@@ -848,9 +921,9 @@
             return;
 
         SaveToUndoStack();
-        
+
         var newNodes = new List<FlowNode>();
-        
+
         foreach (var node in copiedNodes)
         {
             var newNode = new FlowNode
@@ -877,7 +950,7 @@
             newNodes.Add(newNode);
             CurrentFlow.Nodes.Add(newNode);
         }
-        
+
         selectedNodeIds = new HashSet<string>(newNodes.Select(n => n.Id));
         showContextMenu = false;
         isDeployed = false;
@@ -885,16 +958,15 @@
         StateHasChanged();
     }
 
-    private void DuplicateNodes()
-    {
-        PasteNodes();
-    }
+    private void DuplicateNodes() => PasteNodes();
 
     private void ShowContextMenu(MouseEventArgs e)
     {
         showContextMenu = true;
-        contextMenuX = e.ClientX - 280;
-        contextMenuY = e.ClientY - 56;
+        var canvasOffsetX = paletteCollapsed ? 40 : 220;
+        var canvasOffsetY = 40;
+        contextMenuXpx = $"{e.ClientX - canvasOffsetX}px";
+        contextMenuYpx = $"{e.ClientY - canvasOffsetY}px";
     }
 
     private void ZoomIn()
@@ -929,7 +1001,7 @@
     {
         if (undoStack.Count == 0)
             return;
-        
+
         redoStack.Add(CloneFlow(CurrentFlow));
         CurrentFlow = undoStack.Last();
         undoStack.RemoveAt(undoStack.Count - 1);
@@ -941,7 +1013,7 @@
     {
         if (redoStack.Count == 0)
             return;
-        
+
         undoStack.Add(CloneFlow(CurrentFlow));
         CurrentFlow = redoStack.Last();
         redoStack.RemoveAt(redoStack.Count - 1);
@@ -996,7 +1068,7 @@
             Source = source,
             Timestamp = DateTime.Now
         });
-        
+
         if (debugMessages.Count > 100)
             debugMessages.RemoveAt(debugMessages.Count - 1);
     }
@@ -1030,9 +1102,9 @@
     {
         try
         {
-            var imported = System.Text.Json.JsonSerializer.Deserialize<Flow>(importJson, 
+            var imported = System.Text.Json.JsonSerializer.Deserialize<Flow>(importJson,
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            
+
             if (imported != null)
             {
                 SaveToUndoStack();
@@ -1051,7 +1123,7 @@
 
     private void ExportFlow()
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(CurrentFlow, 
+        var json = System.Text.Json.JsonSerializer.Serialize(CurrentFlow,
             new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         importJson = json;
         isExporting = true;
@@ -1063,9 +1135,7 @@
         NavManager.NavigateTo("/");
     }
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
     private class CanvasPoint
     {

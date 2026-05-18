@@ -1,65 +1,72 @@
 @using FlowDesigner.Shared.Models
 
-<g class="flow-node-card"
+<g class="nr-node @(IsSelected ? "selected" : "")"
    transform="translate(@Node.X @Node.Y)"
    @onmousedown:stopPropagation="true"
-   @onmousedown="(e) => HandleMouseDown(e)">
-    <rect class="node-bg"
-          x="0" y="0" 
-          width="150" height="@(GetNodeHeight())" 
-          rx="10" ry="10"
-          fill="@NodeDefinition?.Color ?? "#6366f1""
-          stroke="@(IsSelected ? "#ffffff" : "transparent")"
-          stroke-width="@(IsSelected ? "3" : "0")" />
-    
-    <g class="node-header">
-        <rect x="0" y="0" width="150" height="35" rx="10" ry="10" fill="rgba(0,0,0,0.2)" />
-        <text x="75" y="23" text-anchor="middle" 
-               fill="white" font-size="13" font-weight="600"
-               font-family="Segoe UI, sans-serif">
-            @(string.IsNullOrEmpty(Node.Label) ? (NodeDefinition?.Name ?? "Node") : Node.Label)
-        </text>
-    </g>
+   @onmousedown="(e) => HandleMouseDown(e)"
+   @ondblclick:stopPropagation="true"
+   @ondblclick="() => OnNodeDoubleClick.InvokeAsync()">
+    <rect class="nr-node-bg"
+          x="0" y="0"
+          width="120" height="@(GetNodeHeight())"
+          rx="5" ry="5"
+          fill="@GetNodeBgColor()"
+          stroke="@(IsSelected ? "#ff7700" : "#aaa")"
+          stroke-width="@(IsSelected ? "2" : "1")" />
 
-    <g class="node-inputs">
+    <rect class="nr-node-color-bar"
+          x="0" y="0"
+          width="6" height="@(GetNodeHeight())"
+          rx="5" ry="0"
+          fill="@(NodeDefinition?.Color ?? "#999")" />
+
+    @if (Node.Inputs.Count > 0)
+    {
         @for (int i = 0; i < Node.Inputs.Count; i++)
         {
             var port = Node.Inputs[i];
-            var y = 35 + (i * 20);
-            <g class="input-port" 
+            var x = 6 + (i * 15);
+            <g class="nr-port nr-port-input"
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
                @onclick="() => OnStartConnection.InvokeAsync(port)">
-                <circle cx="10" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
-                <text x="22" y="@(y + 4)" fill="#e2e8f0" font-size="10">@port.Name</text>
+                <rect x="@x" y="-4" width="10" height="8" rx="2" ry="2"
+                      fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1" />
             </g>
         }
-    </g>
+    }
 
-    <g class="node-outputs">
+    @if (Node.Outputs.Count > 0)
+    {
         @for (int i = 0; i < Node.Outputs.Count; i++)
         {
             var port = Node.Outputs[i];
-            var y = 35 + (i * 20);
-            <g class="output-port"
+            var x = 6 + (i * 15);
+            <g class="nr-port nr-port-output"
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
                @onclick="() => OnStartConnection.InvokeAsync(port)">
-                <circle cx="140" cy="@y" r="6" fill="white" stroke="#1e293b" stroke-width="2" />
-                <text x="130" y="@(y + 4)" text-anchor="end" fill="#e2e8f0" font-size="10">@port.Name</text>
+                <rect x="@x" y="@(GetNodeHeight() - 4)" width="10" height="8" rx="2" ry="2"
+                      fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1" />
             </g>
         }
+    }
+
+    <g class="nr-node-icon" transform="translate(10, 4)">
+        <rect x="0" y="0" width="22" height="22" rx="3" ry="3"
+              fill="@(NodeDefinition?.Color ?? "#999")" />
+        <text x="11" y="16" text-anchor="middle"
+              fill="white" font-size="11" font-family="Font Awesome 6 Free" font-weight="900">
+            @GetIconUnicode()
+        </text>
     </g>
 
-    @if (NodeDefinition?.Properties.Count > 0)
-    {
-        <g class="node-footer">
-            <rect x="0" y="@(GetNodeHeight() - 20)" width="150" height="20" rx="0" ry="0" fill="rgba(0,0,0,0.15)" />
-            <text x="10" y="@(GetNodeHeight() - 6)" fill="rgba(255,255,255,0.7)" font-size="9">
-                @Node.Type
-            </text>
-        </g>
-    }
+    <text class="nr-node-label"
+          x="38" y="18"
+          fill="#333" font-size="12" font-weight="500"
+          font-family="Helvetica Neue, Arial, sans-serif">
+        @GetTruncatedLabel()
+    </text>
 </g>
 
 @code {
@@ -76,6 +83,9 @@
     public EventCallback<(FlowNode Node, MouseEventArgs Args)> OnNodeMouseDown { get; set; }
 
     [Parameter]
+    public EventCallback OnNodeDoubleClick { get; set; }
+
+    [Parameter]
     public EventCallback<NodePort> OnStartConnection { get; set; }
 
     [Parameter]
@@ -86,8 +96,52 @@
 
     private double GetNodeHeight()
     {
-        var portCount = Math.Max(Node.Inputs.Count, Node.Outputs.Count);
-        return 35 + (portCount * 20) + (NodeDefinition?.Properties.Count > 0 ? 20 : 0);
+        return 30;
+    }
+
+    private string GetNodeBgColor()
+    {
+        return IsSelected ? "#fff3e0" : "#fff";
+    }
+
+    private string GetTruncatedLabel()
+    {
+        var label = string.IsNullOrEmpty(Node.Label) ? (NodeDefinition?.Name ?? "Node") : Node.Label;
+        return label.Length > 10 ? label.Substring(0, 9) + "…" : label;
+    }
+
+    private string GetIconUnicode()
+    {
+        return NodeDefinition?.Icon switch
+        {
+            "fa-play" => "\uf04b",
+            "fa-bug" => "\uf188",
+            "fa-code" => "\uf121",
+            "fa-sliders" => "\uf1de",
+            "fa-random" => "\uf074",
+            "fa-clock" => "\uf017",
+            "fa-file-alt" => "\uf15c",
+            "fa-globe" => "\uf0ac",
+            "fa-reply" => "\uf3e5",
+            "fa-cloud-download-alt" => "\uf381",
+            "fa-cloud-upload-alt" => "\uf382",
+            "fa-download" => "\uf019",
+            "fa-upload" => "\uf093",
+            "fa-microchip" => "\uf2db",
+            "fa-exchange-alt" => "\uf362",
+            "fa-stopwatch" => "\uf2f2",
+            "fa-sort-numeric-up" => "\uf163",
+            "fa-plug" => "\uf1e6",
+            "fa-bell" => "\uf0f3",
+            "fa-database" => "\uf1c0",
+            "fa-plug-circle-bolt" => "\ue55f",
+            "fa-plug-circle-check" => "\ue55c",
+            "fa-server" => "\uf233",
+            "fa-broadcast-tower" => "\uf519",
+            "fa-satellite-dish" => "\uf7c0",
+            "fa-project-diagram" => "\uf542",
+            _ => "\uf1b2"
+        };
     }
 
     private void HandleMouseDown(MouseEventArgs e)
