@@ -26,8 +26,8 @@ builder.Services.AddMemoryCache(options =>
     options.SizeLimit = 1024 * 1024 * 100;
 });
 
-builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
 builder.Services.AddSingleton<FlowService>();
 builder.Services.AddSingleton<NodeRegistryService>();
@@ -73,13 +73,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
-app.UseRouting();
 app.UseStaticFiles();
-app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapControllers();
-app.MapBlazorHub();
-app.MapFallbackToPage("/_Host");
+app.MapRazorComponents<FlowDesigner.Api.App>()
+    .AddInteractiveServerRenderMode();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("=");
