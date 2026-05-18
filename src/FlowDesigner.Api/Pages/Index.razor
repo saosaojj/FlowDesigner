@@ -1,350 +1,141 @@
 @page "/"
-@page "/dashboard"
 @inject FlowApiService ApiService
 @inject NavigationManager NavManager
-@implements IAsyncDisposable
 
-<div class="dashboard-container">
-    <div class="dashboard-header">
+<div class="flows-page">
+    <div class="flows-header">
         <div class="header-left">
-            <h1><i class="fas fa-industry"></i> 工业生产总览</h1>
-            <p class="subtitle">实时监控 • 数据驱动</p>
+            <h1><i class="fas fa-project-diagram"></i> 流程管理</h1>
+            <p class="subtitle">创建、编辑和管理你的自动化流程</p>
         </div>
         <div class="header-right">
-            <div class="current-time">@currentTime</div>
-            <div class="status-indicator">
-                <span class="status-badge online">系统正常</span>
-            </div>
+            <button class="btn-primary" @onclick="CreateNewFlow">
+                <i class="fas fa-plus"></i> 新建流程
+            </button>
         </div>
     </div>
 
     @if (loading)
     {
-        <div class="loading">
+        <div class="loading-state">
             <i class="fas fa-spinner fa-spin"></i>
             <span>加载中...</span>
         </div>
     }
+    else if (flows == null || flows.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-project-diagram"></i>
+            </div>
+            <h3>还没有流程</h3>
+            <p>点击"新建流程"开始创建你的第一个自动化流程</p>
+            <button class="btn-primary" @onclick="CreateNewFlow">
+                <i class="fas fa-plus"></i> 新建流程
+            </button>
+        </div>
+    }
     else
     {
-        <div class="dashboard-grid">
-            <!-- 第一行：状态和数值卡片 -->
-            <div class="dashboard-widget status-indicator-card" style="grid-column: span 1; grid-row: span 1;">
-                <div class="widget-header">
-                    <i class="fas fa-project-diagram"></i>
-                    <span>流程状态</span>
-                </div>
-                <div class="widget-content">
-                    <div class="status-display" style="background: #10b981;">
-                        <i class="fas fa-play-circle"></i>
-                        <h3>运行中</h3>
-                        <p>@flowRunningCount 个活跃流程</p>
+        <div class="flows-grid">
+            @foreach (var flow in flows)
+            {
+                <div class="flow-card" @onclick="() => OpenFlow(flow.Id)">
+                    <div class="card-header">
+                        <div class="flow-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="flow-status @GetFlowStatusClass(flow)">
+                            <i class="fas @GetFlowStatusIcon(flow)"></i>
+                            @GetFlowStatusText(flow)
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="dashboard-widget number-card" style="grid-column: span 1; grid-row: span 1;">
-                <div class="widget-header">
-                    <i class="fas fa-play-circle"></i>
-                    <span>活跃流程</span>
-                </div>
-                <div class="widget-content">
-                    <div class="number-value">@activeFlowCount</div>
-                    <div class="number-unit">个</div>
-                    <div class="number-trend up"><i class="fas fa-arrow-up"></i> 12%</div>
-                </div>
-            </div>
-
-            <div class="dashboard-widget number-card" style="grid-column: span 1; grid-row: span 1;">
-                <div class="widget-header">
-                    <i class="fas fa-tasks"></i>
-                    <span>执行次数</span>
-                </div>
-                <div class="widget-content">
-                    <div class="number-value">@executionCount</div>
-                    <div class="number-unit">次</div>
-                    <div class="number-trend up"><i class="fas fa-arrow-up"></i> 8%</div>
-                </div>
-            </div>
-
-            <div class="dashboard-widget gauge-card" style="grid-column: span 1; grid-row: span 1;">
-                <div class="widget-header">
-                    <i class="fas fa-check-circle"></i>
-                    <span>执行成功率</span>
-                </div>
-                <div class="widget-content">
-                    <div class="gauge-container">
-                        <svg viewBox="0 0 100 50" class="gauge-svg">
-                            <path d="M 10 50 A 40 40 0 0 1 90 50" stroke="#1e293b" stroke-width="8" fill="none" />
-                            <path d="M 10 50 A 40 40 0 0 1 70 26" stroke="#10b981" stroke-width="8" fill="none" />
-                        </svg>
-                        <div class="gauge-value">95%</div>
+                    <div class="card-body">
+                        <h3 class="flow-name">@flow.Name</h3>
+                        <p class="flow-desc">@(flow.Description ?? "暂无描述")</p>
+                        <div class="flow-stats">
+                            <span><i class="fas fa-cube"></i> @flow.Nodes.Count 节点</span>
+                            <span><i class="fas fa-link"></i> @flow.Connections.Count 连接</span>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 第二行：进度条 -->
-            <div class="dashboard-widget progress-card" style="grid-column: span 4; grid-row: span 1;">
-                <div class="progress-row">
-                    <div class="progress-item">
-                        <span class="progress-label">
-                            <i class="fas fa-microchip"></i>
-                            CPU 使用率
+                    <div class="card-footer">
+                        <span class="flow-time">
+                            <i class="fas fa-clock"></i>
+                            @(flow.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "未知")
                         </span>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: @cpuUsage%; background: @GetProgressColor(cpuUsage);">
-                                <span class="progress-value">@cpuUsage%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="progress-item">
-                        <span class="progress-label">
-                            <i class="fas fa-memory"></i>
-                            内存使用率
-                        </span>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: @memoryUsage%; background: @GetProgressColor(memoryUsage);">
-                                <span class="progress-value">@memoryUsage%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="progress-item">
-                        <span class="progress-label">
-                            <i class="fas fa-stream"></i>
-                            任务队列
-                        </span>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: @queueDepth%; background: @GetProgressColor(queueDepth);">
-                                <span class="progress-value">@queueDepth</span>
-                            </div>
+                        <div class="flow-actions">
+                            <button class="btn-icon" @onclick:stopPropagation="true" @onclick="() => OpenFlow(flow.Id)" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-icon danger" @onclick:stopPropagation="true" @onclick="() => DeleteFlow(flow.Id)" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- 第三行：设备、图表、报警 -->
-            <div class="dashboard-widget device-status-card" style="grid-column: span 1; grid-row: span 2;">
-                <div class="widget-header">
-                    <i class="fas fa-microchip"></i>
-                    <span>设备监控</span>
-                </div>
-                <div class="widget-content">
-                    <div class="device-list">
-                        @if (devices != null && devices.Any())
-                        {
-                            @foreach (var device in devices)
-                            {
-                                <div class="device-item">
-                                    <div class="device-info">
-                                        <span class="device-name">@device.Name</span>
-                                        <span class="device-type">@device.Type</span>
-                                    </div>
-                                    <span class="device-status-badge @device.HealthStatus.ToString().ToLower()">
-                                        @GetDeviceStatusText(device.HealthStatus)
-                                    </span>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <div class="empty-devices">
-                                <i class="fas fa-sliders-h"></i>
-                                <p>暂无设备数据</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="dashboard-widget chart-card" style="grid-column: span 2; grid-row: span 2;">
-                <div class="widget-header">
-                    <i class="fas fa-chart-line"></i>
-                    <span>实时数据流</span>
-                </div>
-                <div class="widget-content">
-                    <div class="chart-container">
-                        <div class="chart-placeholder">
-                            <svg viewBox="0 0 400 200" style="width: 100%; height: 100%;">
-                                <!-- 网格线 -->
-                                @for (int i = 0; i <= 4; i++)
-                                {
-                                    <line x1="0" y1="@(i * 50)" x2="400" y2="@(i * 50)" stroke="#334155" stroke-width="1" />
-                                }
-                                <!-- 数据曲线 -->
-                                <polyline 
-                                    points="0,150 40,120 80,140 120,100 160,80 200,100 240,60 280,80 320,50 360,70 400,40"
-                                    fill="none"
-                                    stroke="#10b981"
-                                    stroke-width="3" />
-                                <!-- 填充区域 -->
-                                <polygon 
-                                    points="0,200 0,150 40,120 80,140 120,100 160,80 200,100 240,60 280,80 320,50 360,70 400,40 400,200"
-                                    fill="rgba(16, 185, 129, 0.1)" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="dashboard-widget alarm-card" style="grid-column: span 1; grid-row: span 2;">
-                <div class="widget-header">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>最近报警</span>
-                </div>
-                <div class="widget-content">
-                    <div class="alarm-list">
-                        @if (alarms != null && alarms.Any())
-                        {
-                            @foreach (var alarm in alarms.Take(5))
-                            {
-                                <div class="alarm-item">
-                                    <div class="alarm-icon @alarm.Severity.ToString().ToLower()">
-                                        <i class="fas @GetAlarmIcon(alarm.Severity)"></i>
-                                    </div>
-                                    <div class="alarm-content">
-                                        <p class="alarm-message">@alarm.Message</p>
-                                        <p class="alarm-time">@alarm.Timestamp.ToLocalTime().ToString("HH:mm:ss")</p>
-                                    </div>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <div class="empty-alarms">
-                                <i class="fas fa-check-circle"></i>
-                                <p>暂无报警</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
+            }
         </div>
     }
 </div>
 
 @code {
     private bool loading = true;
-    private string currentTime = "";
-    private List<DashboardConfig>? dashboards;
-    private DashboardDataSnapshot? currentData;
-    private List<DeviceStatus>? devices;
-    private List<AlarmRecord>? alarms;
-    private int activeFlowCount = 0;
-    private int executionCount = 0;
-    private double cpuUsage = 0;
-    private double memoryUsage = 0;
-    private double queueDepth = 0;
-    private int flowRunningCount = 0;
-    private System.Timers.Timer? refreshTimer;
+    private List<Flow>? flows;
 
     protected override async Task OnInitializedAsync()
     {
-        refreshTimer = new System.Timers.Timer(2000);
-        refreshTimer.Elapsed += async (s, e) => await RefreshDataAsync();
-        refreshTimer.Start();
-
-        await LoadDataAsync();
-        UpdateCurrentTime();
+        await LoadFlowsAsync();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            var timeTimer = new System.Timers.Timer(1000);
-            timeTimer.Elapsed += (s, e) =>
-            {
-                UpdateCurrentTime();
-                InvokeAsync(StateHasChanged);
-            };
-            timeTimer.Start();
-        }
-    }
-
-    private void UpdateCurrentTime()
-    {
-        currentTime = DateTime.Now.ToString("yyyy年MM月dd日 HH:mm:ss");
-    }
-
-    private async Task LoadDataAsync()
+    private async Task LoadFlowsAsync()
     {
         loading = true;
-        
         try
         {
-            dashboards = await ApiService.GetAllDashboardsAsync();
-            devices = await ApiService.GetAllDevicesAsync();
-            alarms = await ApiService.GetRecentAlarmsAsync();
-
-            // 模拟数据更新
-            var random = new Random();
-            activeFlowCount = random.Next(1, 10);
-            executionCount = random.Next(100, 10000);
-            cpuUsage = random.Next(20, 85);
-            memoryUsage = random.Next(30, 80);
-            queueDepth = random.Next(5, 100);
-            flowRunningCount = random.Next(1, 5);
+            flows = await ApiService.GetAllFlowsAsync();
         }
-        catch (Exception)
+        catch
         {
-            // 使用默认值
-            activeFlowCount = 3;
-            executionCount = 1247;
-            cpuUsage = 45;
-            memoryUsage = 62;
-            queueDepth = 38;
-            flowRunningCount = 2;
+            flows = new List<Flow>();
         }
-
         loading = false;
     }
 
-    private async Task RefreshDataAsync()
+    private void CreateNewFlow()
     {
-        var random = new Random();
-        cpuUsage = 30 + random.NextDouble() * 50;
-        memoryUsage = 40 + random.NextDouble() * 40;
-        queueDepth = random.Next(5, 80);
-        
-        await InvokeAsync(StateHasChanged);
+        var newId = Guid.NewGuid().ToString();
+        NavManager.NavigateTo($"/flow/{newId}");
     }
 
-    private string GetProgressColor(double value)
+    private void OpenFlow(string flowId)
     {
-        return value > 80 ? "#ef4444" : value > 60 ? "#f59e0b" : "#10b981";
+        NavManager.NavigateTo($"/flow/{flowId}");
     }
 
-    private string GetDeviceStatusText(DeviceHealthStatus status)
+    private async Task DeleteFlow(string flowId)
     {
-        return status switch
+        try
         {
-            DeviceHealthStatus.Online => "在线",
-            DeviceHealthStatus.Offline => "离线",
-            DeviceHealthStatus.Warning => "警告",
-            DeviceHealthStatus.Error => "错误",
-            DeviceHealthStatus.Maintenance => "维护中",
-            _ => "未知"
-        };
-    }
-
-    private string GetAlarmIcon(AlarmSeverity severity)
-    {
-        return severity switch
-        {
-            AlarmSeverity.Info => "fa-info-circle",
-            AlarmSeverity.Warning => "fa-exclamation-triangle",
-            AlarmSeverity.Error => "fa-times-circle",
-            AlarmSeverity.Critical => "fa-bolt",
-            _ => "fa-bell"
-        };
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (refreshTimer != null)
-        {
-            refreshTimer.Stop();
-            refreshTimer.Dispose();
+            await ApiService.DeleteFlowAsync(flowId);
+            await LoadFlowsAsync();
         }
+        catch
+        {
+        }
+    }
+
+    private string GetFlowStatusClass(Flow flow)
+    {
+        return "status-idle";
+    }
+
+    private string GetFlowStatusIcon(Flow flow)
+    {
+        return "fa-circle";
+    }
+
+    private string GetFlowStatusText(Flow flow)
+    {
+        return "空闲";
     }
 }
