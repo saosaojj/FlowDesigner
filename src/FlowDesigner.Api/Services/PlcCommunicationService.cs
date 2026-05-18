@@ -220,8 +220,8 @@ public class PlcCommunicationService
         var address = ParseModbusAddress(request.Address);
         
         var requestBytes = BuildModbusReadRequest(
-            (byte)(connection.Properties?.GetValueOrDefault("slaveId") ?? 1),
-            functionCode,
+            (byte)(connection.Properties.GetValueOrDefault("slaveId") ?? 1),
+            (byte)functionCode,
             (ushort)address,
             (ushort)request.Count
         );
@@ -257,8 +257,8 @@ public class PlcCommunicationService
         var address = ParseModbusAddress(request.Address);
         
         var requestBytes = BuildModbusWriteRequest(
-            (byte)(connection.Properties?.GetValueOrDefault("slaveId") ?? 1),
-            functionCode,
+            (byte)(connection.Properties.GetValueOrDefault("slaveId") ?? 1),
+            (byte)functionCode,
             (ushort)address,
             request.Value
         );
@@ -291,7 +291,7 @@ public class PlcCommunicationService
 
         var address = ParseS7Address(request.Address);
         
-        var isoPacket = BuildS7ReadRequest(connection.Rack, connection.Slot, address);
+        var isoPacket = BuildS7ReadRequest((byte)connection.Rack, (byte)connection.Slot, address);
         var stream = client.GetStream();
         await stream.WriteAsync(isoPacket);
         
@@ -320,7 +320,7 @@ public class PlcCommunicationService
         }
 
         var address = ParseS7Address(request.Address);
-        var isoPacket = BuildS7WriteRequest(connection.Rack, connection.Slot, address, request.Value);
+        var isoPacket = BuildS7WriteRequest((byte)connection.Rack, (byte)connection.Slot, address, request.Value);
         var stream = client.GetStream();
         await stream.WriteAsync(isoPacket);
         

@@ -23,8 +23,11 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddMemoryCache(options =>
 {
-    options.SizeLimit = 1024 * 1024 * 100; // 100MB
+    options.SizeLimit = 1024 * 1024 * 100;
 });
+
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
 
 builder.Services.AddSingleton<FlowService>();
 builder.Services.AddSingleton<NodeRegistryService>();
@@ -53,6 +56,11 @@ builder.Services.AddSingleton<EnhancedTcpService>();
 builder.Services.AddSingleton<EnhancedRtpService>();
 builder.Services.AddSingleton<CommunicationNodeExecutor>();
 
+builder.Services.AddHttpClient<FlowApiService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5000");
+});
+
 var maxConcurrency = builder.Configuration.GetValue("Execution:MaxConcurrency", 100);
 var maxQueueSize = builder.Configuration.GetValue("Execution:MaxQueueSize", 10000);
 
@@ -65,8 +73,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAll");
+app.UseStaticFiles();
 app.UseAuthorization();
+
 app.MapControllers();
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("=");
@@ -87,6 +99,7 @@ logger.LogInformation("增强通讯服务: 已注册");
 logger.LogInformation("性能监控: 已启用");
 logger.LogInformation("背压控制: 已启用");
 logger.LogInformation("连接池管理: 已启用");
+logger.LogInformation("Blazor Server: 已启用");
 logger.LogInformation("=");
 
 app.Run();

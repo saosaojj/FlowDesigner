@@ -205,8 +205,8 @@ public class CommunicationNodeExecutor : ICommunicationNodeExecutor, IDisposable
                     }
                     else if (message.Payload is string text)
                     {
-                        var data = System.Text.Encoding.UTF8.GetBytes(text);
-                        handler(connectionId, data);
+                        var outgoingData = System.Text.Encoding.UTF8.GetBytes(text);
+                        handler(connectionId, outgoingData);
                     }
                 });
                 break;
@@ -243,10 +243,14 @@ public class CommunicationNodeExecutor : ICommunicationNodeExecutor, IDisposable
                 
             case "rtp":
                 var rtpStats = await _rtpService.GetStatisticsAsync(nodeInfo.ExternalId);
+                var rtpSession = await _rtpService.GetSessionAsync(nodeInfo.ExternalId);
                 if (rtpStats != null)
                 {
                     metrics.MessagesReceived = rtpStats.PacketsReceived;
-                    metrics.MessagesSent = rtpStats.PacketsSent;
+                }
+                if (rtpSession != null)
+                {
+                    metrics.MessagesSent = rtpSession.PacketsSent;
                 }
                 break;
                 

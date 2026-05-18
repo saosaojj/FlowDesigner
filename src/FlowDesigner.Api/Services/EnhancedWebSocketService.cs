@@ -70,7 +70,7 @@ public class EnhancedWebSocketService : IDisposable
         var cts = new CancellationTokenSource();
         _connectionCts[connectionId] = cts;
         
-        var queue = _backpressureController.GetOrCreateQueue(connectionId);
+        var queue = Channel.CreateBounded<WebSocketMessage>(new BoundedChannelOptions(1000));
         _receiveQueues[connectionId] = queue;
 
         var client = new ClientWebSocket();

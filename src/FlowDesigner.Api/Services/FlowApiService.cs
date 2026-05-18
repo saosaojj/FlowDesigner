@@ -1,7 +1,7 @@
 using FlowDesigner.Shared.Models;
 using System.Net.Http.Json;
 
-namespace FlowDesigner.Web.Services;
+namespace FlowDesigner.Api.Services;
 
 public class FlowApiService
 {

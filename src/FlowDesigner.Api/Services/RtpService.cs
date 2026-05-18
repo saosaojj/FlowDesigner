@@ -62,7 +62,7 @@ public class RtpService
             if (config.Multicast)
             {
                 client.JoinMulticastGroup(IPAddress.Parse(config.Host));
-                client.Ttl = config.Ttl;
+                client.Ttl = (short)config.Ttl;
             }
 
             if (!config.IsSender)

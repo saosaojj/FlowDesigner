@@ -35,7 +35,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessJsonAsync(string input, JsonOperation operation)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -72,7 +72,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessCsvAsync(string input, CsvOperation operation)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -183,7 +183,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessXmlAsync(string input, XmlOperation operation)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -268,7 +268,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessYamlAsync(string input, YamlOperation operation)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -301,7 +301,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessArrayAsync(ArrayOperation operation, object input, Dictionary<string, object> options)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -412,7 +412,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessSplitAsync(string input, SplitOperation operation)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -451,7 +451,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessJoinAsync(IEnumerable<object> input, JoinOperation operation, string separator = ",")
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -479,7 +479,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessStringAsync(string input, StringOperation operation, Dictionary<string, object> options)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -533,7 +533,7 @@ public class DataProcessingService
 
     public async Task<object> ProcessBatchAsync(object input, BatchOperation operation, Dictionary<string, object> options)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {

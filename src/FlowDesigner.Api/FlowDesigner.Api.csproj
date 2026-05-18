@@ -13,50 +13,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- 基础依赖 -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-    
-    <!-- ONNX Runtime - YOLO 推理 -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.17.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.17.0" Condition="'$(Configuration)'=='Release'" />
-    
-    <!-- Emgu.CV - OpenCV 图像处理 -->
     <PackageReference Include="Emgu.CV" Version="4.8.1.5350" />
     <PackageReference Include="Emgu.CV.Bitmap" Version="4.8.1.5350" />
     <PackageReference Include="Emgu.CV.runtime.windows" Version="4.8.1.5350" Condition="'$(OS)' == 'Windows_NT'" />
-    <PackageReference Include="Emgu.CV.runtime.linux" Version="4.8.1.5350" Condition="'$(OS)' != 'Windows_NT'" />
-    
-    <!-- Xabe.FFmpeg - 视频处理 -->
     <PackageReference Include="Xabe.FFmpeg" Version="5.2.6" />
-    
-    <!-- 图像处理 -->
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.0" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.0" />
-    
-    <!-- 性能监控 -->
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageReference Include="System.Runtime.Caching" Version="8.0.0" />
-    
-    <!-- 数据库支持 -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    
-    <!-- 缓存 -->
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" Condition="'$(UseRedis)'=='true'" />
-    
-    <!-- 消息队列 -->
     <PackageReference Include="RabbitMQ.Client" Version="6.8.1" Condition="'$(UseRabbitMQ)'=='true'" />
-    
-    <!-- JSON 序列化 -->
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
-    
-    <!-- YAML 处理 -->
     <PackageReference Include="YamlDotNet" Version="15.1.0" />
   </ItemGroup>
 

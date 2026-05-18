@@ -134,7 +134,7 @@ public class StreamProcessor : IDisposable
 {
     private readonly string _streamId;
     private readonly VideoStreamConfig _config;
-    private readonly ILogger<StreamProcessor> _logger;
+    private readonly ILogger _logger;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly ConcurrentQueue<VideoFrame> _frameBuffer;
     private readonly object _lockObject = new();
@@ -148,7 +148,7 @@ public class StreamProcessor : IDisposable
 
     public VideoFrame? LatestFrame => Volatile.Read(ref _latestFrame);
 
-    public StreamProcessor(string streamId, VideoStreamConfig config, ILogger<StreamProcessor> logger)
+    public StreamProcessor(string streamId, VideoStreamConfig config, ILogger logger)
     {
         _streamId = streamId;
         _config = config;
@@ -169,29 +169,27 @@ public class StreamProcessor : IDisposable
     {
         try
         {
-            using var capture = new VideoCapture(_config.SourcePathOrUrl);
+            var capture = new VideoCapture(_config.SourcePathOrUrl);
             
             if (!capture.IsOpened)
             {
                 _logger.LogError("无法打开视频源: {Source}", _config.SourcePathOrUrl);
+                capture.Dispose();
                 return;
             }
 
-            // 设置缓冲区大小
-            capture.SetCaptureProperty(CapProp.BufferSize, _config.BufferSize);
-            
             // 设置帧率（如果是 RTSP）
             if (_config.SourceType == VideoSourceType.RTSP)
             {
-                capture.SetCaptureProperty(CapProp.Fps, _config.Fps);
+                capture.Set(Emgu.CV.CvEnum.CapProp.Fps, _config.Fps);
             }
 
             _logger.LogInformation(
                 "视频流已打开: {Source}, 分辨率: {Width}x{Height}, FPS: {Fps}",
                 _config.SourcePathOrUrl,
-                capture.GetCaptureProperty(CapProp.FrameWidth),
-                capture.GetCaptureProperty(CapProp.FrameHeight),
-                capture.GetCaptureProperty(CapProp.Fps));
+                capture.Get(Emgu.CV.CvEnum.CapProp.FrameWidth),
+                capture.Get(Emgu.CV.CvEnum.CapProp.FrameHeight),
+                capture.Get(Emgu.CV.CvEnum.CapProp.Fps));
 
             var frameInterval = TimeSpan.FromSeconds(1.0 / _config.Fps);
             var skipCount = Math.Max(0, _config.FrameSkip);
@@ -213,7 +211,7 @@ public class StreamProcessor : IDisposable
                     {
                         await Task.Delay(1000, cancellationToken);
                         capture.Dispose();
-                        capture.Open(_config.SourcePathOrUrl);
+                        capture = new VideoCapture(_config.SourcePathOrUrl);
                     }
                     
                     continue;
@@ -280,6 +278,8 @@ public class StreamProcessor : IDisposable
                     await Task.Delay(frameInterval - elapsed, cancellationToken);
                 }
             }
+            
+            capture?.Dispose();
         }
         catch (OperationCanceledException)
         {
@@ -294,9 +294,10 @@ public class StreamProcessor : IDisposable
     private byte[] EncodeFrame(Mat frame, int quality)
     {
         var buffer = new VectorOfByte();
-        var jpegParams = new KeyPoint[0];
-        
-        var encodeParams = new int[] { (int)ImwriteFlags.JpegQuality, quality };
+        var encodeParams = new KeyValuePair<Emgu.CV.CvEnum.ImwriteFlags, int>[]
+        {
+            new(Emgu.CV.CvEnum.ImwriteFlags.JpegQuality, quality)
+        };
         CvInvoke.Imencode(".jpg", frame, buffer, encodeParams);
         
         return buffer.ToArray();

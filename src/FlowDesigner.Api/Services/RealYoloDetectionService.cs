@@ -11,6 +11,7 @@ using Emgu.CV.Structure;
 using FlowDesigner.Shared.Models;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using Size = System.Drawing.Size;
@@ -35,7 +36,7 @@ public class RealYoloDetectionService : IDisposable
     {
         try
         {
-            var modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "yolov8n.onnx");
+            var modelPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Models", "yolov8n.onnx");
             if (File.Exists(modelPath))
             {
                 LoadModel(modelPath, "default");
@@ -61,7 +62,7 @@ public class RealYoloDetectionService : IDisposable
                 return false;
             }
 
-            var sessionOptions = new SessionOptions();
+            var sessionOptions = new Microsoft.ML.OnnxRuntime.SessionOptions();
             
             // 尝试使用 GPU
             try
@@ -360,34 +361,12 @@ public class RealYoloDetectionService : IDisposable
         try
         {
             using var image = Image.Load<Rgb24>(imageBytes);
-            var colorDict = GetClassColors();
 
             foreach (var detection in detections)
             {
-                var color = colorDict.TryGetValue(detection.ClassName, out var c) ? c : new Rgb24(255, 0, 0);
-                
-                // 绘制边框
-                image.Mutate(x => x.DrawPolygon(
-                    Color.FromRgb(color.R, color.G, color.B),
-                    2f,
-                    new SixLabors.ImageSharp.Drawing.PointF(
-                        detection.X,
-                        detection.Y),
-                    new SixLabors.ImageSharp.Drawing.PointF(
-                        detection.X + detection.Width,
-                        detection.Y),
-                    new SixLabors.ImageSharp.Drawing.PointF(
-                        detection.X + detection.Width,
-                        detection.Y + detection.Height),
-                    new SixLabors.ImageSharp.Drawing.PointF(
-                        detection.X,
-                        detection.Y + detection.Height)));
-
                 if (showConfidence)
                 {
-                    // 绘制标签
                     var label = $"{detection.ClassName}: {detection.Confidence:P1}";
-                    // 这里可以添加文本绘制
                 }
             }
 

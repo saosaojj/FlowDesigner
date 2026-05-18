@@ -29,6 +29,7 @@ public class PlcConnection
     public int Slot { get; set; } = 1;
     public int Timeout { get; set; } = 5000;
     public bool IsConnected { get; set; }
+    public Dictionary<string, object> Properties { get; set; } = new();
 }
 
 public class PlcReadRequest

@@ -161,6 +161,8 @@ public class ImageOutputParams
     public bool DrawDetections { get; set; } = true;
     public bool SaveToFile { get; set; } = false;
     public bool ReturnBase64 { get; set; } = true;
+    public bool AutoFilename { get; set; } = true;
+    public string? FilenamePrefix { get; set; } = "img";
 }
 
 // 图像格式

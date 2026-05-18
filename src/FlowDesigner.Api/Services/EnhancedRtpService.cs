@@ -329,7 +329,7 @@ public class EnhancedRtpService : IDisposable
             {
                 var values = queue.ToArray();
                 var mean = values.Average();
-                var variance = values.Sum(x => Math.Pow(x - mean, 2)) / values.Count;
+                var variance = values.Sum(x => Math.Pow(x - mean, 2)) / values.Length;
                 statistics.AverageJitterMs = Math.Sqrt(variance);
                 statistics.MaxJitterMs = Math.Max(statistics.MaxJitterMs, statistics.AverageJitterMs);
                 if (statistics.MinJitterMs == 0)

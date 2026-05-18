@@ -491,7 +491,7 @@ public class DataCalculationService
 
     public async Task<object> EvaluateExpressionAsync(string expression, Dictionary<string, object> context)
     {
-        return await Task.Run(() =>
+        return await Task.Run<object>(() =>
         {
             try
             {
@@ -500,12 +500,12 @@ public class DataCalculationService
                     expression = expression.Replace($"${key}", context[key]?.ToString() ?? "0");
                 }
 
-                expression = System.Data.DataTable.Compute(expression, "").ToString();
+                expression = new DataTable().Compute(expression, "")?.ToString();
                 return Convert.ToDouble(expression);
             }
             catch (Exception ex)
             {
-                return new { error = ex.Message };
+                return (object)new Dictionary<string, string> { ["error"] = ex.Message };
             }
         });
     }

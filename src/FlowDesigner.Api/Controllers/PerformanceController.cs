@@ -159,7 +159,7 @@ public class PerformanceController : ControllerBase
     [HttpGet("backpressure")]
     public ActionResult<Dictionary<string, BackpressureState>> GetBackpressureStates()
     {
-        return _backpressureController.GetAllStates();
+        return Ok(_backpressureController.GetAllStates().ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
     }
 
     [HttpGet("metrics")]

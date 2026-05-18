@@ -482,9 +482,24 @@ public class DashboardService
             WidgetData = new Dictionary<string, object>()
         };
 
-        var systemStats = _monitor.GetSystemStatistics();
+        var execStats = _monitor.GetSystemStatistics();
         var engineStats = _engine.GetStatistics();
         var flowStatuses = GetAllFlowStatuses();
+
+        var systemStats = new SystemStatistics
+        {
+            CpuUsage = execStats.CpuUsage,
+            MemoryUsage = execStats.MemoryUsage / (1024.0 * 1024.0),
+            MemoryUsedBytes = execStats.MemoryUsage,
+            ActiveFlows = engineStats.ActiveFlows,
+            TotalExecutions = execStats.TotalMessagesProcessed,
+            SuccessRate = execStats.TotalMessagesProcessed > 0
+                ? (execStats.TotalMessagesProcessed - execStats.TotalErrors) / (double)execStats.TotalMessagesProcessed
+                : 0,
+            AverageLatencyMs = execStats.AverageExecutionTime,
+            ActiveConnections = 0,
+            Timestamp = execStats.Timestamp
+        };
 
         snapshot.SystemStats = systemStats;
         snapshot.FlowStatuses = flowStatuses;
@@ -518,7 +533,7 @@ public class DashboardService
             DashboardWidgetType.NumberCard => GenerateNumberCardData(widget, systemStats, engineStats),
             DashboardWidgetType.StatusIndicator => GenerateStatusIndicatorData(widget, systemStats, flowStatuses),
             DashboardWidgetType.Gauge => GenerateGaugeData(widget, systemStats, engineStats),
-            DashboardWidgetType.ProgressBar => GenerateProgressBarData(widget, systemStats),
+            DashboardWidgetType.ProgressBar => GenerateProgressBarData(widget, systemStats, engineStats),
             DashboardWidgetType.LineChart => GenerateLineChartData(widget),
             DashboardWidgetType.BarChart => GenerateBarChartData(widget, flowStatuses),
             DashboardWidgetType.PieChart => GeneratePieChartData(widget, flowStatuses),
@@ -576,7 +591,7 @@ public class DashboardService
         switch (widget.DataConfig.DataKey)
         {
             case "flowStatus":
-                var runningFlows = flowStatuses.Count(f => f.IsRunning);
+                var runningFlows = flowStatuses.Count(f => f.State == FlowRunState.Running);
                 if (runningFlows > 0)
                 {
                     status = "normal";
@@ -632,7 +647,7 @@ public class DashboardService
         switch (widget.DataConfig.DataKey)
         {
             case "successRate":
-                value = engineStats.SuccessRate * 100;
+                value = systemStats.SuccessRate * 100;
                 break;
             case "cpuUsage":
                 value = systemStats.CpuUsage;
@@ -656,7 +671,7 @@ public class DashboardService
         };
     }
 
-    private ProgressBarData GenerateProgressBarData(DashboardWidget widget, SystemStatistics systemStats)
+    private ProgressBarData GenerateProgressBarData(DashboardWidget widget, SystemStatistics systemStats, EngineStatistics engineStats)
     {
         double value = 0;
         string color = widget.Color;
@@ -672,7 +687,7 @@ public class DashboardService
                 color = value > 85 ? "#ef4444" : value > 70 ? "#f59e0b" : "#10b981";
                 break;
             case "queueDepth":
-                value = Math.Min(systemStats.QueueDepth, 1000);
+                value = Math.Min(engineStats.QueueSize, 1000);
                 color = value > 800 ? "#ef4444" : value > 500 ? "#f59e0b" : "#10b981";
                 break;
             default:
@@ -716,10 +731,10 @@ public class DashboardService
     {
         var data = new List<ChartDataPoint>
         {
-            new ChartDataPoint { Label = "成功", Value = flowStatuses.Count(f => f.LastExecutionResult?.Success == true), Color = "#10b981" },
-            new ChartDataPoint { Label = "失败", Value = flowStatuses.Count(f => f.LastExecutionResult?.Success == false), Color = "#ef4444" },
-            new ChartDataPoint { Label = "运行中", Value = flowStatuses.Count(f => f.IsRunning), Color = "#3b82f6" },
-            new ChartDataPoint { Label = "等待中", Value = flowStatuses.Count(f => f.IsWaiting), Color = "#f59e0b" }
+            new ChartDataPoint { Label = "成功", Value = flowStatuses.Count(f => f.State != FlowRunState.Error && f.ExecutionCount > 0), Color = "#10b981" },
+            new ChartDataPoint { Label = "失败", Value = flowStatuses.Count(f => f.State == FlowRunState.Error), Color = "#ef4444" },
+            new ChartDataPoint { Label = "运行中", Value = flowStatuses.Count(f => f.State == FlowRunState.Running), Color = "#3b82f6" },
+            new ChartDataPoint { Label = "等待中", Value = flowStatuses.Count(f => f.State == FlowRunState.Paused), Color = "#f59e0b" }
         };
 
         return data;
@@ -729,8 +744,8 @@ public class DashboardService
     {
         var data = new List<ChartDataPoint>
         {
-            new ChartDataPoint { Label = "正常", Value = flowStatuses.Count(f => f.LastExecutionResult?.Success == true), Color = "#10b981" },
-            new ChartDataPoint { Label = "异常", Value = flowStatuses.Count(f => f.LastExecutionResult?.Success == false), Color = "#ef4444" }
+            new ChartDataPoint { Label = "正常", Value = flowStatuses.Count(f => f.State != FlowRunState.Error && f.ExecutionCount > 0), Color = "#10b981" },
+            new ChartDataPoint { Label = "异常", Value = flowStatuses.Count(f => f.State == FlowRunState.Error), Color = "#ef4444" }
         };
 
         return data;

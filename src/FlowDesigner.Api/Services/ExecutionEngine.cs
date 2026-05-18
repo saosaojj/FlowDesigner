@@ -57,10 +57,10 @@ public class ExecutionEngine
 public class FlowRuntime
 {
     private readonly Flow _flow;
-    private readonly ILogger<FlowRuntime> _logger;
+    private readonly ILogger _logger;
     private bool _isRunning;
 
-    public FlowRuntime(Flow flow, ILogger<FlowRuntime> logger)
+    public FlowRuntime(Flow flow, ILogger logger)
     {
         _flow = flow;
         _logger = logger;
@@ -168,7 +168,7 @@ public class FlowRuntime
             case "switch":
                 var property = node.Properties.GetValueOrDefault("property")?.ToString() ?? "payload";
                 var propValue = property == "payload" ? input.Payload : input.Metadata?.GetValueOrDefault(property);
-                output.Metadata?["_switch_result"] = propValue;
+                if (output.Metadata != null) output.Metadata["_switch_result"] = propValue;
                 break;
 
             default:

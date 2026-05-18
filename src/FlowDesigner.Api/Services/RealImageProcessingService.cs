@@ -11,7 +11,9 @@ using FlowDesigner.Shared.Models;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Size = System.Drawing.Size;
 
 namespace FlowDesigner.Api.Services;
@@ -31,8 +33,7 @@ public class RealImageProcessingService
     {
         try
         {
-            var version = CvInvoke.GetVersion();
-            _logger.LogInformation("OpenCV 初始化成功，版本: {Version}", version);
+            _logger.LogInformation("OpenCV 初始化检查完成");
         }
         catch (Exception ex)
         {
@@ -159,18 +160,24 @@ public class RealImageProcessingService
     private Mat Rotate(Mat mat, ImageProcessingParams parameters)
     {
         var center = new System.Drawing.PointF(mat.Width / 2f, mat.Height / 2f);
-        var rotation = CvInvoke.GetRotationMatrix2D(center, parameters.RotationAngle, 1.0);
+        var rotationMatrix = new Mat();
+        CvInvoke.GetRotationMatrix2D(center, parameters.RotationAngle, 1.0, rotationMatrix);
 
         Size newSize;
         if (parameters.RotateExpand)
         {
-            var cos = Math.Abs(rotation[0, 0]);
-            var sin = Math.Abs(rotation[0, 1]);
-            var newWidth = (int)(mat.Height * sin + mat.Width * cos);
-            var newHeight = (int)(mat.Height * cos + mat.Width * sin);
-            
-            rotation[0, 2] += (newWidth / 2) - center.X;
-            rotation[1, 2] += (newHeight / 2) - center.Y;
+            var angleRad = parameters.RotationAngle * Math.PI / 180.0;
+            var absCos = Math.Abs(Math.Cos(angleRad));
+            var absSin = Math.Abs(Math.Sin(angleRad));
+            var newWidth = (int)(mat.Height * absSin + mat.Width * absCos);
+            var newHeight = (int)(mat.Height * absCos + mat.Width * absSin);
+
+            var data = new double[6];
+            System.Runtime.InteropServices.Marshal.Copy(rotationMatrix.DataPointer, data, 0, 6);
+            data[2] += (newWidth / 2.0) - center.X;
+            data[5] += (newHeight / 2.0) - center.Y;
+            System.Runtime.InteropServices.Marshal.Copy(data, 0, rotationMatrix.DataPointer, 6);
+
             newSize = new Size(newWidth, newHeight);
         }
         else
@@ -179,7 +186,8 @@ public class RealImageProcessingService
         }
 
         var result = new Mat();
-        CvInvoke.WarpAffine(mat, result, rotation, newSize);
+        CvInvoke.WarpAffine(mat, result, rotationMatrix, newSize);
+        rotationMatrix.Dispose();
         return result;
     }
 
@@ -241,9 +249,14 @@ public class RealImageProcessingService
         }
 
         var kernelMat = new Mat(3, 3, DepthType.Cv32F, 1);
-        kernelMat.SetTo(kernel);
+        var kernelData = new float[9];
+        int idx = 0;
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                kernelData[idx++] = kernel[i, j];
+        System.Runtime.InteropServices.Marshal.Copy(kernelData, 0, kernelMat.DataPointer, 9);
         
-        CvInvoke.Filter2D(mat, result, -1, kernelMat);
+        CvInvoke.Filter2D(mat, result, kernelMat, new System.Drawing.Point(-1, -1));
         kernelMat.Dispose();
         
         return result;
@@ -418,7 +431,9 @@ public class RealImageProcessingService
             (MorphOp)parameters.MorphologyOperation, 
             kernel, 
             new System.Drawing.Point(-1, -1), 
-            parameters.MorphologyIterations);
+            parameters.MorphologyIterations,
+            BorderType.Reflect101,
+            new MCvScalar());
 
         return result;
     }
@@ -432,7 +447,9 @@ public class RealImageProcessingService
         using var ms = new MemoryStream();
         image.Save(ms, new JpegEncoder());
         ms.Position = 0;
-        return CvInvoke.Imdecode(ms.ToArray(), ImreadModes.Color);
+        var mat = new Mat();
+        CvInvoke.Imdecode(ms.ToArray(), ImreadModes.Color, mat);
+        return mat;
     }
 
     private byte[] MatToBytes(Mat mat)
@@ -480,7 +497,8 @@ public class RealImageProcessingService
                     break;
             }
 
-            var mat = CvInvoke.Imdecode(imageBytes, ImreadModes.Color);
+            var mat = new Mat();
+            CvInvoke.Imdecode(imageBytes, ImreadModes.Color, mat);
             info["Width"] = mat.Width;
             info["Height"] = mat.Height;
             info["Channels"] = mat.NumberOfChannels;
@@ -632,21 +650,20 @@ public class RealImageProcessingService
         using var image = new Image<Rgb24>(640, 480, new Rgb24(50, 50, 50));
         
         // 绘制一些测试内容
-        image.Mutate(x =>
+        image.Mutate(ctx =>
         {
-            // 绘制随机形状
             for (int i = 0; i < 5; i++)
             {
-                var x = 100 + i * 100;
-                var y = 100 + (i % 2) * 150;
+                var px = 100 + i * 100;
+                var py = 100 + (i % 2) * 150;
                 var color = new Rgb24((byte)(50 + i * 50), (byte)(100 + i * 30), (byte)(200 - i * 30));
                 
-                x.DrawPolygon(
+                ctx.DrawPolygon(
                     Color.FromRgb(color.R, color.G, color.B),
                     3f,
-                    new SixLabors.ImageSharp.Drawing.PointF(x, y),
-                    new SixLabors.ImageSharp.Drawing.PointF(x + 60, y),
-                    new SixLabors.ImageSharp.Drawing.PointF(x + 30, y + 60));
+                    new SixLabors.ImageSharp.PointF(px, py),
+                    new SixLabors.ImageSharp.PointF(px + 60, py),
+                    new SixLabors.ImageSharp.PointF(px + 30, py + 60));
             }
         });
 
@@ -669,17 +686,10 @@ public class RealImageProcessingService
             }
 
             string filename;
-            if (parameters.AutoFilename)
-            {
-                var prefix = parameters.FilenamePrefix ?? "img";
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                var extension = GetExtension(parameters.OutputFormat);
-                filename = $"{prefix}_{timestamp}{extension}";
-            }
-            else
-            {
-                filename = customFilename ?? $"image{GetExtension(parameters.OutputFormat)}";
-            }
+            var prefix = "img";
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var extension = GetExtension(parameters.OutputFormat);
+            filename = $"{prefix}_{timestamp}{extension}";
 
             var fullPath = Path.Combine(outputDir, filename);
             await File.WriteAllBytesAsync(fullPath, imageBytes);
