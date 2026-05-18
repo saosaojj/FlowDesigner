@@ -48,7 +48,7 @@ public class BackpressureStatistics
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
-public class BackpressureController
+public class BackpressureController : IDisposable
 {
     private readonly ConcurrentDictionary<string, BackpressureState> _connectionStates = new();
     private readonly ConcurrentDictionary<string, Channel<object>> _queues = new();

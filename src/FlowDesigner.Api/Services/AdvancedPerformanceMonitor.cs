@@ -16,11 +16,11 @@ public class AdvancedPerformanceMonitor
     private readonly IMemoryCache _cache;
     private readonly ConcurrentDictionary<string, FlowPerformanceTracker> _metrics;
     private readonly ConcurrentDictionary<string, TimingStats> _timingStats;
-    private readonly ConcurrentDictionary<string, SystemMetrics> _historicalMetrics;
+    private readonly ConcurrentDictionary<string, AdvancedSystemMetrics> _historicalMetrics;
     private readonly Timer _monitorTimer;
     private readonly object _lockObject = new();
 
-    public SystemMetrics CurrentSystemMetrics { get; private set; } = new();
+    public AdvancedSystemMetrics CurrentSystemMetrics { get; private set; } = new();
 
     public AdvancedPerformanceMonitor(ILogger<AdvancedPerformanceMonitor> logger, IMemoryCache cache)
     {
@@ -28,7 +28,7 @@ public class AdvancedPerformanceMonitor
         _cache = cache;
         _metrics = new ConcurrentDictionary<string, FlowPerformanceTracker>();
         _timingStats = new ConcurrentDictionary<string, TimingStats>();
-        _historicalMetrics = new ConcurrentDictionary<string, SystemMetrics>();
+        _historicalMetrics = new ConcurrentDictionary<string, AdvancedSystemMetrics>();
 
         // 每 1 秒更新一次系统指标
         _monitorTimer = new Timer(UpdateSystemMetrics, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
@@ -63,7 +63,7 @@ public class AdvancedPerformanceMonitor
     {
         try
         {
-            var metrics = new SystemMetrics
+            var metrics = new AdvancedSystemMetrics
             {
                 Timestamp = DateTime.UtcNow,
                 CpuUsage = GetCpuUsage(),
@@ -178,9 +178,9 @@ public class AdvancedPerformanceMonitor
         return new TimingStatistics();
     }
 
-    public List<SystemMetrics> GetHistoricalSystemMetrics(TimeSpan duration)
+    public List<AdvancedSystemMetrics> GetHistoricalSystemMetrics(TimeSpan duration)
     {
-        var metrics = new List<SystemMetrics>();
+        var metrics = new List<AdvancedSystemMetrics>();
         var startTime = DateTime.UtcNow - duration;
 
         foreach (var kvp in _historicalMetrics)
@@ -372,7 +372,7 @@ public class FlowPerformanceData
     public DateTime? EndTime { get; set; }
 }
 
-public class SystemMetrics
+public class AdvancedSystemMetrics
 {
     public DateTime Timestamp { get; set; }
     public float CpuUsage { get; set; }
@@ -388,7 +388,7 @@ public class PerformanceReport
 {
     public DateTime GeneratedAt { get; set; }
     public TimeSpan TimeWindow { get; set; }
-    public SystemMetrics SystemMetrics { get; set; } = new SystemMetrics();
+    public AdvancedSystemMetrics SystemMetrics { get; set; } = new AdvancedSystemMetrics();
     public Dictionary<string, FlowPerformanceMetrics> FlowMetrics { get; set; } = new();
     public Dictionary<string, TimingStatistics> TimingStats { get; set; } = new();
     public double AverageLatency { get; set; }
