@@ -8,17 +8,20 @@
    @ondblclick="() => OnNodeDoubleClick.InvokeAsync()">
     <rect class="nr-node-bg"
           x="0" y="0"
-          width="120" height="@(GetNodeHeight())"
+          width="120" height="30"
           rx="5" ry="5"
           fill="@GetNodeBgColor()"
           stroke="@(IsSelected ? "#ff7700" : "#aaa")"
           stroke-width="@(IsSelected ? "2" : "1")" />
 
-    <rect class="nr-node-color-bar"
-          x="0" y="0"
-          width="6" height="@(GetNodeHeight())"
-          rx="5" ry="0"
-          fill="@(NodeDefinition?.Color ?? "#999")" />
+    <path class="nr-node-color-bar"
+          d="M5,0 L114,0 Q120,0 120,5 L120,25 Q120,30 114,30 L5,30 Q0,30 0,25 L0,5 Q0,0 5,0 Z"
+          fill="@(NodeDefinition?.Color ?? "#999")"
+          style="clip-path: inset(0 0 0 0 round 5px 5px 5px 5px); opacity: 0.2;" />
+
+    <rect x="0" y="0" width="6" height="30"
+          fill="@(NodeDefinition?.Color ?? "#999")"
+          style="clip-path: inset(0 round 5px 0 0 5px);" />
 
     @if (Node.Inputs.Count > 0)
     {
@@ -30,8 +33,8 @@
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
                @onclick="() => OnStartConnection.InvokeAsync(port)">
-                <rect x="@x" y="-4" width="10" height="8" rx="2" ry="2"
-                      fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1" />
+                <circle cx="@(x + 5)" cy="0" r="5"
+                        fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1.5" />
             </g>
         }
     }
@@ -46,23 +49,22 @@
                @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
                @onclick="() => OnStartConnection.InvokeAsync(port)">
-                <rect x="@x" y="@(GetNodeHeight() - 4)" width="10" height="8" rx="2" ry="2"
-                      fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1" />
+                <circle cx="@(x + 5)" cy="30" r="5"
+                        fill="@(NodeDefinition?.Color ?? "#999")" stroke="#fff" stroke-width="1.5" />
             </g>
         }
     }
 
-    <g class="nr-node-icon" transform="translate(10, 4)">
-        <rect x="0" y="0" width="22" height="22" rx="3" ry="3"
-              fill="@(NodeDefinition?.Color ?? "#999")" />
-        <text x="11" y="16" text-anchor="middle"
-              fill="white" font-size="11" font-family="Font Awesome 6 Free" font-weight="900">
-            @GetIconUnicode()
-        </text>
-    </g>
+    <rect x="8" y="4" width="22" height="22" rx="3" ry="3"
+          fill="@(NodeDefinition?.Color ?? "#999")" />
+    <foreignObject x="8" y="4" width="22" height="22">
+        <div class="nr-node-icon-html" style="width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;">
+            <i class="fas @(NodeDefinition?.Icon ?? "fa-cube")"></i>
+        </div>
+    </foreignObject>
 
     <text class="nr-node-label"
-          x="38" y="18"
+          x="36" y="19"
           fill="#333" font-size="12" font-weight="500"
           font-family="Helvetica Neue, Arial, sans-serif">
         @GetTruncatedLabel()
@@ -94,11 +96,6 @@
     [Parameter]
     public EventCallback OnDelete { get; set; }
 
-    private double GetNodeHeight()
-    {
-        return 30;
-    }
-
     private string GetNodeBgColor()
     {
         return IsSelected ? "#fff3e0" : "#fff";
@@ -107,41 +104,7 @@
     private string GetTruncatedLabel()
     {
         var label = string.IsNullOrEmpty(Node.Label) ? (NodeDefinition?.Name ?? "Node") : Node.Label;
-        return label.Length > 10 ? label.Substring(0, 9) + "…" : label;
-    }
-
-    private string GetIconUnicode()
-    {
-        return NodeDefinition?.Icon switch
-        {
-            "fa-play" => "\uf04b",
-            "fa-bug" => "\uf188",
-            "fa-code" => "\uf121",
-            "fa-sliders" => "\uf1de",
-            "fa-random" => "\uf074",
-            "fa-clock" => "\uf017",
-            "fa-file-alt" => "\uf15c",
-            "fa-globe" => "\uf0ac",
-            "fa-reply" => "\uf3e5",
-            "fa-cloud-download-alt" => "\uf381",
-            "fa-cloud-upload-alt" => "\uf382",
-            "fa-download" => "\uf019",
-            "fa-upload" => "\uf093",
-            "fa-microchip" => "\uf2db",
-            "fa-exchange-alt" => "\uf362",
-            "fa-stopwatch" => "\uf2f2",
-            "fa-sort-numeric-up" => "\uf163",
-            "fa-plug" => "\uf1e6",
-            "fa-bell" => "\uf0f3",
-            "fa-database" => "\uf1c0",
-            "fa-plug-circle-bolt" => "\ue55f",
-            "fa-plug-circle-check" => "\ue55c",
-            "fa-server" => "\uf233",
-            "fa-broadcast-tower" => "\uf519",
-            "fa-satellite-dish" => "\uf7c0",
-            "fa-project-diagram" => "\uf542",
-            _ => "\uf1b2"
-        };
+        return label.Length > 8 ? label.Substring(0, 7) + "…" : label;
     }
 
     private void HandleMouseDown(MouseEventArgs e)

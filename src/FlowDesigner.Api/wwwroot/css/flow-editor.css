@@ -489,6 +489,15 @@
     position: relative;
 }
 
+.nr-node-icon-html {
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.nr-node-icon-html i {
+    pointer-events: none;
+}
+
 .nr-canvas {
     width: 100%;
     height: 100%;

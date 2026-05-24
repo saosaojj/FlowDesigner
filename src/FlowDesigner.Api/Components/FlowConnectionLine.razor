@@ -3,9 +3,7 @@
 @if (sourceNode != null && targetNode != null)
 {
     var pathData = GetConnectionPath();
-    <g class="nr-connection @(IsSelected ? "selected" : "")"
-       @onclick="HandleClick"
-       style="cursor: pointer;">
+    <g class="nr-connection" @onclick="HandleClick">
         <path d="@pathData"
               stroke="@(IsSelected ? "#ff7700" : "#999")"
               stroke-width="@(IsSelected ? "3" : "2")"
@@ -13,8 +11,7 @@
         <path d="@pathData"
               stroke="transparent"
               stroke-width="15"
-              fill="none"
-              style="cursor: pointer;" />
+              fill="none" />
     </g>
 }
 
